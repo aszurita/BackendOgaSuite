@@ -1,0 +1,1547 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OGA Suite Backend — Documentación Técnica</title>
+<style>
+  :root {
+    --bg: #0f1117; --surface: #1a1d27; --surface2: #242736; --surface3: #2d3147;
+    --border: #353a52; --accent: #6c8cff; --accent2: #a78bfa; --accent3: #34d399;
+    --warn: #f59e0b; --danger: #f87171; --text: #e2e8f0; --text2: #94a3b8; --text3: #64748b;
+    --get: #22c55e; --post: #3b82f6; --put: #f59e0b; --del: #ef4444;
+    --oga: #a78bfa; --any: #6c8cff;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; }
+  a { color: var(--accent); text-decoration: none; }
+
+  /* NAV */
+  nav { position: fixed; top: 0; left: 0; width: 260px; height: 100vh; background: var(--surface); border-right: 1px solid var(--border); overflow-y: auto; padding: 20px 0; z-index: 100; }
+  nav h2 { padding: 0 20px 12px; font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--text3); border-bottom: 1px solid var(--border); margin-bottom: 8px; }
+  nav a { display: block; padding: 6px 20px; font-size: 13px; color: var(--text2); transition: all .15s; }
+  nav a:hover, nav a.active { background: var(--surface2); color: var(--accent); border-left: 2px solid var(--accent); }
+  nav .nav-section { margin-top: 16px; }
+  nav .nav-section > span { display: block; padding: 4px 20px; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: var(--text3); }
+  nav .nav-sub a { padding-left: 32px; font-size: 12px; }
+
+  /* MAIN */
+  main { margin-left: 260px; padding: 40px 48px; max-width: 1200px; }
+
+  /* SECTIONS */
+  section { margin-bottom: 64px; scroll-margin-top: 24px; }
+  h1 { font-size: 28px; font-weight: 700; color: var(--text); margin-bottom: 8px; }
+  h2 { font-size: 20px; font-weight: 600; color: var(--accent); margin: 32px 0 16px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+  h3 { font-size: 16px; font-weight: 600; color: var(--text); margin: 24px 0 12px; }
+  h4 { font-size: 13px; font-weight: 600; color: var(--text2); margin: 16px 0 8px; text-transform: uppercase; letter-spacing: .5px; }
+  p { color: var(--text2); margin-bottom: 12px; font-size: 14px; }
+
+  /* BADGE */
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 700; }
+  .badge-get { background: rgba(34,197,94,.15); color: var(--get); }
+  .badge-post { background: rgba(59,130,246,.15); color: var(--post); }
+  .badge-put { background: rgba(245,158,11,.15); color: var(--put); }
+  .badge-del { background: rgba(239,68,68,.15); color: var(--del); }
+  .badge-oga { background: rgba(167,139,250,.15); color: var(--oga); }
+  .badge-any { background: rgba(108,140,255,.15); color: var(--any); }
+
+  /* CARD */
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 20px; margin-bottom: 16px; }
+  .card-header { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
+  .endpoint-path { font-family: 'Cascadia Code', 'Fira Code', monospace; font-size: 13px; color: var(--text); font-weight: 600; }
+
+  /* TABLE */
+  table { width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 16px; }
+  th { background: var(--surface2); color: var(--text2); font-weight: 600; padding: 8px 12px; text-align: left; border-bottom: 1px solid var(--border); font-size: 11px; text-transform: uppercase; letter-spacing: .5px; }
+  td { padding: 8px 12px; border-bottom: 1px solid var(--border); color: var(--text2); vertical-align: top; }
+  tr:hover td { background: var(--surface2); }
+  .type { font-family: monospace; font-size: 11px; color: var(--accent3); background: rgba(52,211,153,.08); padding: 1px 5px; border-radius: 3px; }
+  .req { color: var(--danger); font-weight: 700; font-size: 10px; }
+
+  /* CODE */
+  pre { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 16px; font-family: 'Cascadia Code', 'Fira Code', monospace; font-size: 12px; overflow-x: auto; margin-bottom: 12px; }
+  code { font-family: 'Cascadia Code', 'Fira Code', monospace; font-size: 12px; background: var(--surface2); padding: 1px 5px; border-radius: 3px; color: var(--accent3); }
+
+  /* FLOW */
+  .flow { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 12px 0; }
+  .flow-box { padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: 600; }
+  .flow-router { background: rgba(108,140,255,.15); color: var(--accent); border: 1px solid rgba(108,140,255,.3); }
+  .flow-service { background: rgba(52,211,153,.15); color: var(--accent3); border: 1px solid rgba(52,211,153,.3); }
+  .flow-model { background: rgba(245,158,11,.15); color: var(--warn); border: 1px solid rgba(245,158,11,.3); }
+  .flow-db { background: rgba(239,68,68,.15); color: var(--danger); border: 1px solid rgba(239,68,68,.3); }
+  .flow-arrow { color: var(--text3); font-size: 16px; }
+
+  /* GRID */
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+
+  /* ARCH BOX */
+  .arch-box { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px; }
+  .arch-box h4 { color: var(--accent); margin-top: 0; }
+  .arch-box ul { list-style: none; padding: 0; }
+  .arch-box li { padding: 4px 0; font-size: 12px; color: var(--text2); border-bottom: 1px solid var(--border); }
+  .arch-box li:last-child { border-bottom: none; }
+  .arch-box li code { font-size: 11px; }
+
+  /* ALERT */
+  .alert { padding: 12px 16px; border-radius: 8px; margin: 12px 0; font-size: 13px; }
+  .alert-info { background: rgba(108,140,255,.1); border-left: 3px solid var(--accent); color: var(--text2); }
+  .alert-warn { background: rgba(245,158,11,.1); border-left: 3px solid var(--warn); color: var(--text2); }
+  .alert-success { background: rgba(52,211,153,.1); border-left: 3px solid var(--accent3); color: var(--text2); }
+
+  /* DIVIDER */
+  hr { border: none; border-top: 1px solid var(--border); margin: 24px 0; }
+
+  /* PILL */
+  .pill { display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+  .pill-oga { background: rgba(167,139,250,.15); color: var(--oga); }
+  .pill-any { background: rgba(108,140,255,.15); color: var(--any); }
+  .pill-open { background: rgba(52,211,153,.15); color: var(--accent3); }
+
+  .ttl-badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 11px; background: rgba(245,158,11,.15); color: var(--warn); font-weight: 700; }
+
+  @media(max-width:768px) {
+    nav { display: none; }
+    main { margin-left: 0; padding: 20px; }
+    .grid2, .grid3 { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <h2>OGA Suite API</h2>
+  <a href="#overview">Visión General</a>
+  <a href="#arquitectura">Arquitectura</a>
+  <a href="#estructura">Estructura de Archivos</a>
+  <a href="#core">Capa Core</a>
+  <a href="#modelos">Modelos (Schemas)</a>
+
+  <div class="nav-section">
+    <span>Endpoints</span>
+    <div class="nav-sub">
+      <a href="#ep-auth">/auth — Autenticación</a>
+      <a href="#ep-glosario">/glosario — Glosario</a>
+      <a href="#ep-dominios">/dominios — Dominios</a>
+      <a href="#ep-metadatos">/metadatos — Metadatos</a>
+      <a href="#ep-aprobaciones">/aprobaciones — Aprobaciones</a>
+      <a href="#ep-casos">/casos-uso — Casos de Uso</a>
+      <a href="#ep-campanias">/campanias — Campañas</a>
+      <a href="#ep-analytics">/analytics — Analytics</a>
+    </div>
+  </div>
+
+  <div class="nav-section">
+    <span>Módulos Completos</span>
+    <div class="nav-sub">
+      <a href="#mod-auth">Auth — Router↔Service↔Models</a>
+      <a href="#mod-glosario">Glosario — Router↔Service↔Models</a>
+      <a href="#mod-dominios">Dominios — Router↔Service↔Models</a>
+      <a href="#mod-metadatos">Metadatos — Router↔Service↔Models</a>
+      <a href="#mod-aprobaciones">Aprobaciones — Router↔Service↔Models</a>
+      <a href="#mod-casos">Casos de Uso — Router↔Service↔Models</a>
+      <a href="#mod-campanias">Campañas — Router↔Service↔Models</a>
+      <a href="#mod-analytics">Analytics — Router↔Service↔Models</a>
+    </div>
+  </div>
+
+  <div class="nav-section">
+    <span>BD & Migración</span>
+    <div class="nav-sub">
+      <a href="#db-tablas">Tablas de BD</a>
+      <a href="#db-migracion">Migración SQL</a>
+    </div>
+  </div>
+</nav>
+
+<main>
+
+<!-- ═══════════════════════════════════════════════════════ OVERVIEW -->
+<section id="overview">
+  <h1>🔷 OGA Suite — Backend FastAPI</h1>
+  <p style="font-size:16px;color:var(--text);margin-bottom:20px;">Documentación técnica completa del backend profesional construido para el Banco de Guayaquil. Reemplaza 3 endpoints genéricos SQL-injection-prone por 42 endpoints REST semánticos con autenticación Azure AD y control de permisos OGA basado en base de datos.</p>
+
+  <div class="grid3">
+    <div class="arch-box">
+      <h4>🗄️ Base de Datos</h4>
+      <ul>
+        <li>Motor: <strong>MySQL</strong></li>
+        <li>Host: <code>172.26.61.35:3323</code></li>
+        <li>BD: <code>BG_OGASUITE</code></li>
+        <li>Usuario: <code>apl_ogasuite</code></li>
+        <li>Driver: PyMySQL + DictCursor</li>
+        <li>Pool: 10 conexiones thread-safe</li>
+      </ul>
+    </div>
+    <div class="arch-box">
+      <h4>🔐 Autenticación</h4>
+      <ul>
+        <li>Proveedor: Azure Entra ID</li>
+        <li>Protocolo: Bearer JWT (RS256)</li>
+        <li>TenantID: <code>d5cb91b6-...</code></li>
+        <li>ClientID: <code>893b18cb-...</code></li>
+        <li>JWKS: cache 24h automático</li>
+        <li>OGA: tabla <code>t_oga_usuarios</code></li>
+      </ul>
+    </div>
+    <div class="arch-box">
+      <h4>⚡ Performance</h4>
+      <ul>
+        <li>FastAPI 0.115 + Uvicorn</li>
+        <li>Árbol metadatos: cache 15min</li>
+        <li>Permisos usuario: cache 5min</li>
+        <li>Términos: cache 10min</li>
+        <li>Stats dominio: asyncio paralelo</li>
+        <li>CORS: orígenes configurables</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="alert alert-success" style="margin-top:20px;">
+    <strong>Problema resuelto:</strong> El frontend anterior enviaba SQL dinámico completo al servidor (POST /query con SELECT...). Ahora el backend expone endpoints semánticos REST — el frontend solo manda datos, nunca SQL. Esto elimina vulnerabilidades de SQL injection y centraliza toda la lógica de negocio.
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════ ARQUITECTURA -->
+<section id="arquitectura">
+  <h2>Arquitectura General</h2>
+
+  <h3>Flujo de una petición</h3>
+  <div class="flow" style="font-size:13px;">
+    <div class="flow-box" style="background:rgba(167,139,250,.1);color:var(--oga);border:1px solid rgba(167,139,250,.3);">🌐 Frontend React</div>
+    <span class="flow-arrow">→</span>
+    <div class="flow-box" style="background:rgba(239,68,68,.1);color:var(--danger);border:1px solid rgba(239,68,68,.3);">CORS Middleware</div>
+    <span class="flow-arrow">→</span>
+    <div class="flow-box flow-router">Router (FastAPI)</div>
+    <span class="flow-arrow">→</span>
+    <div class="flow-box" style="background:rgba(239,68,68,.1);color:var(--danger);border:1px solid rgba(239,68,68,.3);">Dependency Injection<br><small>get_db / get_current_user</small></div>
+    <span class="flow-arrow">→</span>
+    <div class="flow-box flow-service">Service (lógica)</div>
+    <span class="flow-arrow">→</span>
+    <div class="flow-box flow-db">MySQL Pool</div>
+  </div>
+
+  <h3>Jerarquía de Dependencies (FastAPI)</h3>
+  <pre>get_db()                          → Entrega conexión del pool MySQL
+  └── get_token_payload()           → Valida Bearer JWT de Azure AD
+        └── get_current_user()      → Enriquece usuario desde BD (cache 5min)
+              └── require_oga_user() → Verifica is_oga=True, si no → HTTP 403</pre>
+
+  <h3>Sistema de Permisos OGA</h3>
+  <p>El campo <code>is_oga</code> se determina consultando la tabla <code>t_oga_usuarios</code> en BD (no hardcodeado en código). Se cachea por 5 minutos por email.</p>
+
+  <div class="grid2">
+    <div class="card">
+      <h4>Usuario OGA</h4>
+      <ul style="list-style:none;font-size:13px;color:var(--text2);">
+        <li>✅ Crear/editar/eliminar términos del glosario</li>
+        <li>✅ Editar metadatos de tablas <strong>directamente</strong></li>
+        <li>✅ Aprobar/rechazar solicitudes de aprobación</li>
+        <li>✅ Crear/editar dominios</li>
+        <li>✅ Gestionar campañas</li>
+        <li>✅ Ver resumen de visitas</li>
+        <li>✅ Invalidar cache del árbol de metadatos</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h4>Usuario No-OGA (cualquier empleado)</h4>
+      <ul style="list-style:none;font-size:13px;color:var(--text2);">
+        <li>✅ Ver todos los datos (GET endpoints)</li>
+        <li>✅ Registrar visitas</li>
+        <li>✅ Ver sus propias aprobaciones</li>
+        <li>⚠️ Editar tabla → crea solicitud PENDIENTE</li>
+        <li>❌ No puede aprobar/rechazar</li>
+        <li>❌ No puede crear/editar en glosario</li>
+        <li>❌ No puede gestionar campañas</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════ ESTRUCTURA -->
+<section id="estructura">
+  <h2>Estructura de Archivos</h2>
+  <pre>BackendOgaSuite/
+├── app/
+│   ├── main.py                    ← Punto de entrada FastAPI (CORS, routers, lifespan)
+│   ├── core/
+│   │   ├── config.py              ← Configuración centralizada (.env → Settings)
+│   │   ├── database.py            ← Pool de conexiones MySQL thread-safe
+│   │   ├── auth.py                ← Validación JWT Azure AD (JWKS con cache 24h)
+│   │   ├── permissions.py         ← Dependencies: get_current_user, require_oga_user
+│   │   ├── cache.py               ← TTLCache: árbol(15min), permisos(5min), términos(10min), JWKS(24h)
+│   │   ├── exceptions.py          ← Excepciones tipadas + manejadores globales HTTP
+│   │   └── logging_config.py      ← Logging estructurado JSON (structlog)
+│   ├── models/
+│   │   ├── common.py              ← PaginatedResponse[T], OkResponse, HealthCheck
+│   │   ├── auth.py                ← CurrentUser, MeResponse, PermissionsMap
+│   │   ├── terminos.py            ← Termino, TerminoCreate, TerminoUpdate, DominioMapa
+│   │   ├── dominios.py            ← Dominio, DominioStats, AvanceDominio
+│   │   ├── metadatos.py           ← TablaOficial, Campo, ArbolMetadatos, RecomendacionDoc
+│   │   ├── aprobaciones.py        ← Aprobacion, AprobacionCreate, tipos 1/2/3/4/5/9
+│   │   ├── casos_uso.py           ← CasoUso, Fuente, Subdominio, ContadoresEstado
+│   │   ├── campanias.py           ← CampaniaClasificacion, CampaniaSeguimientoResumen
+│   │   └── analytics.py           ← VisitaCreate, VisitaResumen
+│   ├── routers/
+│   │   ├── auth.py                ← GET /auth/me  GET /auth/health
+│   │   ├── terminos.py            ← /glosario/terminos/* + crosslinks + duplicado
+│   │   ├── dominios.py            ← /dominios/* + estadísticas + avances
+│   │   ├── metadatos.py           ← /metadatos/tablas + campos + árbol + owners
+│   │   ├── aprobaciones.py        ← /aprobaciones + aprobar/rechazar
+│   │   ├── casos_uso.py           ← /casos-uso + fuentes + términos
+│   │   ├── campanias.py           ← /campanias/clasificaciones + seguimiento
+│   │   └── analytics.py           ← /analytics/visitas
+│   └── services/
+│       ├── auth_service.py        ← enrich_user(), check_is_oga(), get_empleado_data()
+│       ├── terminos_service.py    ← CRUD glosario, sync casos-uso, crosslinks, duplicados
+│       ├── dominios_service.py    ← Stats paralelas, avances, tablas/términos por dominio
+│       ├── metadatos_service.py   ← Árbol cached, paginación tablas/campos, recomendaciones
+│       ├── aprobaciones_service.py← Workflow aprobación, _aplicar_cambio() 6 tipos, auditoría
+│       ├── casos_uso_service.py   ← CRUD casos, fuentes, subdominios, contadores
+│       ├── campanias_service.py   ← Clasificaciones con conteos, seguimiento agrupado
+│       └── analytics_service.py  ← Registro silencioso de visitas, resumen OGA
+├── migrations/
+│   └── 001_initial_oga_tables.sql ← 3 tablas nuevas: t_oga_usuarios, t_auditoria_cambios, t_configuracion_app
+├── .env                           ← Credenciales reales (NO commitear)
+├── .env.example                   ← Plantilla pública
+└── requirements.txt               ← FastAPI, PyMySQL, python-jose, cachetools, etc.</pre>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════ CORE -->
+<section id="core">
+  <h2>Capa Core — Explicación detallada</h2>
+
+  <div class="card">
+    <h3>📄 main.py — Punto de entrada</h3>
+    <p>Crea la aplicación FastAPI con <strong>lifespan</strong> (reemplaza on_startup/on_shutdown). Al arrancar: inicializa el pool MySQL y configura el logging. Al apagar: cierra todas las conexiones del pool.</p>
+    <p>Configura CORS: solo acepta peticiones desde <code>localhost:5173</code>, <code>localhost:5175</code>, y <code>gobinfoana01-2:3000</code>. Métodos permitidos: GET, POST, PUT, DELETE. Headers: Authorization, Content-Type.</p>
+    <p>Registra los 8 routers bajo sus prefijos y registra los manejadores globales de excepciones.</p>
+  </div>
+
+  <div class="card">
+    <h3>📄 core/config.py — Configuración</h3>
+    <p>Usa <code>pydantic-settings</code> para leer variables del archivo <code>.env</code>. Cached con <code>@lru_cache</code> para no releer el disco en cada petición. Variables clave:</p>
+    <table>
+      <tr><th>Variable</th><th>Valor por defecto</th><th>Uso</th></tr>
+      <tr><td><code>SQL_HOST</code></td><td>172.26.61.35</td><td>IP del servidor MySQL</td></tr>
+      <tr><td><code>SQL_PORT</code></td><td>3323</td><td>Puerto MySQL (no estándar)</td></tr>
+      <tr><td><code>SQL_DATABASE</code></td><td>BG_OGASUITE</td><td>Base de datos</td></tr>
+      <tr><td><code>SQL_POOL_SIZE</code></td><td>10</td><td>Conexiones máximas en pool</td></tr>
+      <tr><td><code>AZURE_TENANT_ID</code></td><td>d5cb91b6-...</td><td>Para construir URL JWKS</td></tr>
+      <tr><td><code>AZURE_CLIENT_ID</code></td><td>893b18cb-...</td><td>Validar audience del JWT</td></tr>
+      <tr><td><code>CACHE_TTL_ARBOL_SEGUNDOS</code></td><td>900</td><td>TTL árbol metadatos (15min)</td></tr>
+      <tr><td><code>CACHE_TTL_PERMISOS_SEGUNDOS</code></td><td>300</td><td>TTL permisos usuario (5min)</td></tr>
+    </table>
+  </div>
+
+  <div class="card">
+    <h3>📄 core/database.py — Pool de conexiones MySQL</h3>
+    <p>Implementa un pool thread-safe con <code>Semaphore</code> (limita concurrencia a pool_size) + <code>deque</code> (almacena conexiones disponibles) + <code>Lock</code> (protege el deque). Se pre-calientan la mitad de las conexiones al iniciar.</p>
+    <p><strong>Al adquirir una conexión:</strong> verifica que esté viva con <code>ping(reconnect=True)</code>. Si murió, crea una nueva. Luego hace <code>yield conn</code> al endpoint, y al salir: <code>commit()</code> si todo fue bien, <code>rollback()</code> si hubo excepción.</p>
+    <p><strong>DictCursor:</strong> todas las queries devuelven <code>dict</code> en lugar de tuplas, por eso el código usa <code>row["campo"]</code> en vez de <code>row[0]</code>.</p>
+    <p><code>get_db()</code> es el FastAPI Dependency que los routers usan con <code>Depends(get_db)</code>.</p>
+  </div>
+
+  <div class="card">
+    <h3>📄 core/auth.py — Validación JWT Azure AD</h3>
+    <p>Pasos de validación de un Bearer token:</p>
+    <ol style="color:var(--text2);font-size:13px;padding-left:20px;margin-bottom:12px;">
+      <li>Extrae el token del header <code>Authorization: Bearer &lt;token&gt;</code></li>
+      <li>Obtiene las claves públicas de Azure AD desde <code>https://login.microsoftonline.com/{TENANT_ID}/discovery/v2.0/keys</code></li>
+      <li>Cachea esas claves por 24 horas (JWKS cache)</li>
+      <li>Decodifica el JWT con <code>python-jose</code>, algoritmo RS256, verificando audience = ClientID</li>
+      <li>Si falla por rotación de llaves → invalida cache JWKS y lanza HTTP 401</li>
+    </ol>
+    <p>Retorna el payload del token (claims: email, nombre, etc.)</p>
+  </div>
+
+  <div class="card">
+    <h3>📄 core/permissions.py — Dependencies de permisos</h3>
+    <p><code>get_current_user()</code>: combina el token JWT con datos de BD (empleado + is_oga) y retorna un objeto <code>CurrentUser</code> completo. Usa cache TTL 5min.</p>
+    <p><code>require_oga_user()</code>: llama a <code>get_current_user()</code> y verifica <code>is_oga=True</code>. Si no → HTTP 403 "Esta operación requiere permisos OGA".</p>
+  </div>
+
+  <div class="card">
+    <h3>📄 core/cache.py — Sistema de cache TTL</h3>
+    <table>
+      <tr><th>Cache</th><th>TTL</th><th>Tamaño máx.</th><th>Qué almacena</th></tr>
+      <tr><td><code>_arbol_cache</code></td><td><span class="ttl-badge">15 min</span></td><td>1 entrada</td><td>Árbol servidor→base→esquema→tablas</td></tr>
+      <tr><td><code>_permisos_cache</code></td><td><span class="ttl-badge">5 min</span></td><td>500 usuarios</td><td>CurrentUser por email</td></tr>
+      <tr><td><code>_terminos_cache</code></td><td><span class="ttl-badge">10 min</span></td><td>2 entradas</td><td>Listas de términos frecuentes</td></tr>
+      <tr><td><code>_jwks_cache</code></td><td><span class="ttl-badge">24 h</span></td><td>1 entrada</td><td>Claves públicas Azure AD (JWKS)</td></tr>
+    </table>
+    <p>Todos los caches tienen su propio Lock para ser thread-safe. Se pueden invalidar manualmente con funciones como <code>invalidar_arbol_cache()</code>.</p>
+  </div>
+
+  <div class="card">
+    <h3>📄 core/exceptions.py — Excepciones tipadas</h3>
+    <table>
+      <tr><th>Excepción</th><th>HTTP</th><th>Code</th><th>Cuándo</th></tr>
+      <tr><td><code>NotFoundException</code></td><td>404</td><td>NOT_FOUND</td><td>Recurso no existe en BD</td></tr>
+      <tr><td><code>ForbiddenException</code></td><td>403</td><td>FORBIDDEN</td><td>Sin permisos</td></tr>
+      <tr><td><code>UnauthorizedException</code></td><td>401</td><td>UNAUTHORIZED</td><td>Sin token</td></tr>
+      <tr><td><code>ConflictException</code></td><td>409</td><td>CONFLICT</td><td>Duplicado (ej: nombre de término ya existe)</td></tr>
+      <tr><td><code>DatabaseException</code></td><td>503</td><td>DB_ERROR</td><td>Fallo en BD</td></tr>
+    </table>
+    <p>El manejador global convierte cualquier excepción no manejada en HTTP 500 con <code>{"detail": "Error interno", "code": "INTERNAL_ERROR"}</code>.</p>
+    <p>Los errores de validación Pydantic retornan HTTP 422 con la lista de campos inválidos.</p>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════ MODELOS -->
+<section id="modelos">
+  <h2>Modelos (Pydantic Schemas)</h2>
+  <p>Los modelos definen la estructura de datos que entra y sale por los endpoints. Pydantic los valida automáticamente.</p>
+
+  <div class="grid2">
+    <div class="arch-box">
+      <h4>common.py</h4>
+      <ul>
+        <li><code>PaginatedResponse[T]</code> — data[], total, page, page_size, total_pages</li>
+        <li><code>OkResponse</code> — ok:bool, message:str</li>
+        <li><code>HealthCheck</code> — status, db_connected, version</li>
+        <li><code>ErrorResponse</code> — detail, code</li>
+      </ul>
+    </div>
+    <div class="arch-box">
+      <h4>auth.py</h4>
+      <ul>
+        <li><code>CurrentUser</code> — email, display_name, username, codigo_empleado, centro_costo, departamento, cargo, localidad, is_oga, permissions</li>
+        <li><code>MeResponse</code> — user:UserInfo, is_oga, permissions:PermissionsMap</li>
+        <li><code>PermissionsMap</code> — glosario, metadatos, aprobaciones, dominios, campanias</li>
+      </ul>
+    </div>
+    <div class="arch-box">
+      <h4>terminos.py</h4>
+      <ul>
+        <li><code>Termino</code> — id, nombre, tipo, descripcion, dominios, caracteristicas, golden_record, dato_personal, prioridad, sn_activo, fechas, autores</li>
+        <li><code>TerminoCreate</code> — igual sin id/fechas (requerido: nombre, tipo)</li>
+        <li><code>TerminoUpdate</code> — todos opcionales</li>
+        <li><code>TerminoResumen</code> — id, nombre, tipo (para crosslinks)</li>
+        <li><code>DominioMapa</code> — dominio:str, count:int</li>
+        <li><code>BuscarDuplicadoResponse</code> — es_duplicado, termino_existente_id</li>
+        <li><code>SyncCasosUsoBody</code> — casos_uso_ids:list[int]</li>
+      </ul>
+    </div>
+    <div class="arch-box">
+      <h4>dominios.py</h4>
+      <ul>
+        <li><code>Dominio</code> — id_dominio, codigo_dominio, descripcion_dominio, tipo_base_datos, responsable, objetivo, alcance, estado, sn_activo, fechas</li>
+        <li><code>DominioStats</code> — cant_casos, cant_terminos, cant_atributos, cant_artefactos, cant_tablas, cant_estructura, porc_avance</li>
+        <li><code>AvanceDominio</code> — id_avance, descripcion, completado, fecha_completado, responsable</li>
+        <li><code>AvanceUpdate</code> — completado:bool</li>
+      </ul>
+    </div>
+    <div class="arch-box">
+      <h4>metadatos.py</h4>
+      <ul>
+        <li><code>TablaOficial</code> — id, plataforma, servidor, base, esquema, tabla, descripcion_tabla, data_owner, nombre_data_owner, data_steward, id_clasificacion, clasificacion, etiquetas, dominios, fechas, sn_activo</li>
+        <li><code>TablaUpdate</code> — descripcion_tabla, data_owner, data_steward, id_clasificacion, etiquetas, dominios (todos opcionales)</li>
+        <li><code>Campo</code> — llave_tabla, campo, tipo_dato, longitud, descripcion, detalle, plataforma…tabla</li>
+        <li><code>ArbolMetadatos</code> — servidores[NodoServidor[NodoBase[NodoEsquema[tablas:list[str]]]]], cached_at</li>
+        <li><code>RecomendacionDoc</code> — campo, sugerencia, prefijo_detectado</li>
+        <li><code>FiltrosMetadatos</code> — servidores, plataformas, clasificaciones</li>
+      </ul>
+    </div>
+    <div class="arch-box">
+      <h4>aprobaciones.py</h4>
+      <ul>
+        <li><code>Aprobacion</code> — id, tipo_cambio(1-9), estado, original, solicitado, autor_solicitud, nombre_autor, fechas, resolvio, dato1-8, descripcion_cambio</li>
+        <li><code>AprobacionCreate</code> — tipo_cambio, original, solicitado, dato1-7, descripcion_cambio</li>
+        <li><code>AprobacionAprobarBody</code> — comentario (opcional)</li>
+        <li><code>AprobacionRechazarBody</code> — motivo (requerido)</li>
+      </ul>
+    </div>
+    <div class="arch-box">
+      <h4>casos_uso.py</h4>
+      <ul>
+        <li><code>CasoUso</code> — id_caso_uso, descripcion_caso_uso, id_dominio, subdominio, objetivo, estado, responsable, fecha_inicio, fecha_fin, sn_activo, fecha_creacion</li>
+        <li><code>Fuente</code> — id, id_fuente_aprovisionamiento, txt_tabla, descripcion, tipo_fuente</li>
+        <li><code>Subdominio</code> — id_subdominio, descripcion_subdominio, id_dominio, responsable, estado, sn_activo</li>
+        <li><code>ContadoresEstado</code> — activos, terminados, total</li>
+      </ul>
+    </div>
+    <div class="arch-box">
+      <h4>campanias.py &amp; analytics.py</h4>
+      <ul>
+        <li><code>CampaniaClasificacion</code> — id, descripcion, tipo, estado, num_activos, num_terminados, num_total</li>
+        <li><code>CampaniaSeguimientoResumen</code> — codigo_iniciativa, nombre, estado, num_activos, num_terminados, valor, fecha_inicio, fecha_fin, terminado</li>
+        <li><code>CampaniaStats</code> — total_clasificaciones, total_iniciativas, total_activas, total_terminadas</li>
+        <li><code>VisitaCreate</code> — desc_pagina, sub_pagina</li>
+        <li><code>VisitaResumen</code> — desc_pagina, total_visitas, ultimo_acceso</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════ EP: AUTH -->
+<section id="ep-auth">
+  <h2>/auth — Autenticación</h2>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="badge badge-get">GET</span>
+      <span class="endpoint-path">/auth/health</span>
+      <span class="pill pill-open">🔓 Sin autenticación</span>
+    </div>
+    <p><strong>Propósito:</strong> Verificar que el backend y la conexión a MySQL están operativos. Útil para health checks de infraestructura.</p>
+    <div class="grid2">
+      <div>
+        <h4>Recibe</h4>
+        <p>Nada.</p>
+      </div>
+      <div>
+        <h4>Devuelve</h4>
+        <pre>{
+  "status": "ok",           // "ok" | "degraded"
+  "db_connected": true,     // false si MySQL no responde
+  "version": "1.0.0"
+}</pre>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="badge badge-get">GET</span>
+      <span class="endpoint-path">/auth/me</span>
+      <span class="pill pill-any">🔑 Cualquier usuario autenticado</span>
+    </div>
+    <p><strong>Propósito:</strong> Retorna el perfil completo del usuario autenticado incluyendo datos de empleado y permisos por módulo. El frontend usa esto para saber qué botones mostrar.</p>
+    <div class="grid2">
+      <div>
+        <h4>Recibe</h4>
+        <p>Header: <code>Authorization: Bearer &lt;azure_token&gt;</code></p>
+      </div>
+      <div>
+        <h4>Devuelve</h4>
+        <pre>{
+  "user": {
+    "email": "jgutierrez@bancoguayaquil.com",
+    "display_name": "Juan Gutierrez",
+    "username": "jgutierrez",
+    "codigo_empleado": "12345",
+    "centro_costo": "CC001",
+    "departamento": "OGA",
+    "cargo": "Analista",
+    "localidad": "Guayaquil"
+  },
+  "is_oga": true,
+  "permissions": {
+    "glosario": { "can_create": true, "can_edit": true, "can_delete": true },
+    "metadatos": { "can_edit_direct": true, "requires_approval": false },
+    "aprobaciones": { "can_approve": true, "can_reject": true },
+    "dominios": { "can_create": true, "can_edit": true },
+    "campanias": { "can_manage": true }
+  }
+}</pre>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════ EP: GLOSARIO -->
+<section id="ep-glosario">
+  <h2>/glosario — Glosario Empresarial</h2>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="badge badge-get">GET</span>
+      <span class="endpoint-path">/glosario/terminos</span>
+      <span class="pill pill-open">🔓 Público</span>
+    </div>
+    <p>Lista paginada del glosario con múltiples filtros. Paginación 100% server-side.</p>
+    <h4>Query params</h4>
+    <table>
+      <tr><th>Parámetro</th><th>Tipo</th><th>Default</th><th>Descripción</th></tr>
+      <tr><td>page</td><td class="type">int</td><td>1</td><td>Página actual (≥1)</td></tr>
+      <tr><td>page_size</td><td class="type">int</td><td>20</td><td>Items por página (1-100)</td></tr>
+      <tr><td>buscar</td><td class="type">str</td><td>—</td><td>Búsqueda en nombre y descripción (case-insensitive)</td></tr>
+      <tr><td>tipo</td><td class="type">str</td><td>—</td><td>TERMINO | ATRIBUTO | ATRIBUTO/TERMINO</td></tr>
+      <tr><td>dominio</td><td class="type">str</td><td>—</td><td>Filtrar por nombre de dominio</td></tr>
+      <tr><td>golden_record</td><td class="type">bool</td><td>—</td><td>true | false</td></tr>
+      <tr><td>dato_personal</td><td class="type">int</td><td>—</td><td>ID de categoría PDP (1-10)</td></tr>
+      <tr><td>caracteristica</td><td class="type">str</td><td>—</td><td>Búsqueda en campo caracteristicas (CDE, AR, etc.)</td></tr>
+    </table>
+    <h4>Devuelve: <code>PaginatedResponse[Termino]</code></h4>
+    <pre>{ "data": [...], "total": 250, "page": 1, "page_size": 20, "total_pages": 13 }</pre>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="badge badge-get">GET</span>
+      <span class="endpoint-path">/glosario/terminos/recientes</span>
+      <span class="pill pill-open">🔓 Público</span>
+    </div>
+    <p>Top N términos ordenados por fecha de modificación o creación descendente.</p>
+    <h4>Query: <code>limit</code> (int, default 10, max 50)</h4>
+    <h4>Devuelve: <code>list[Termino]</code></h4>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="badge badge-get">GET</span>
+      <span class="endpoint-path">/glosario/terminos/crosslinks</span>
+      <span class="pill pill-open">🔓 Público</span>
+    </div>
+    <p>Lista compacta (id, nombre, tipo) de todos los términos activos. El frontend usa esto para detectar menciones de términos en texto y crear hipervínculos automáticos.</p>
+    <h4>Devuelve: <code>list[TerminoResumen]</code></h4>
+    <pre>[{ "id": 42, "nombre": "Cliente", "tipo": "TERMINO" }, ...]</pre>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="badge badge-get">GET</span>
+      <span class="endpoint-path">/glosario/terminos/buscar-duplicado</span>
+      <span class="pill pill-open">🔓 Público</span>
+    </div>
+    <p>Verifica si ya existe un término con el mismo nombre y tipo antes de crear uno nuevo. El frontend lo llama on-blur en el formulario.</p>
+    <h4>Query params</h4>
+    <table>
+      <tr><th>Parámetro</th><th>Requerido</th><th>Descripción</th></tr>
+      <tr><td>nombre</td><td><span class="req">SÍ</span></td><td>Nombre a verificar</td></tr>
+      <tr><td>tipo</td><td><span class="req">SÍ</span></td><td>TERMINO | ATRIBUTO | ATRIBUTO/TERMINO</td></tr>
+      <tr><td>exclude_id</td><td>no</td><td>ID a excluir (en modo edición)</td></tr>
+    </table>
+    <h4>Devuelve: <code>BuscarDuplicadoResponse</code></h4>
+    <pre>{ "es_duplicado": true, "termino_existente_id": 15 }</pre>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="badge badge-get">GET</span>
+      <span class="endpoint-path">/glosario/terminos/{termino_id}</span>
+      <span class="pill pill-open">🔓 Público</span>
+    </div>
+    <h4>Path: <code>termino_id</code> (int)</h4>
+    <h4>Devuelve: <code>Termino</code> | 404 si no existe</h4>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="badge badge-post">POST</span>
+      <span class="endpoint-path">/glosario/terminos</span>
+      <span class="pill pill-oga">🔒 Solo OGA</span>
+      <span class="badge badge-post">201</span>
+    </div>
+    <p>Crea un nuevo término. Verifica duplicados automáticamente. Si tipo es ATRIBUTO y no se envía subcategoría, la pone en "EN REVISIÓN".</p>
+    <h4>Body: <code>TerminoCreate</code></h4>
+    <pre>{
+  "nombre": "Cliente Premium",      // REQUERIDO
+  "tipo": "TERMINO",                // REQUERIDO: TERMINO|ATRIBUTO|ATRIBUTO/TERMINO
+  "descripcion": "...",
+  "dominios": "Retail;Banca",       // Separados por ";"
+  "golden_record": false,
+  "dato_personal": null,
+  "caracteristicas": "CDE",
+  "prioridad": 1
+}</pre>
+    <h4>Devuelve: <code>Termino</code> recién creado | 409 si ya existe | 403 si no es OGA</h4>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="badge badge-put">PUT</span>
+      <span class="endpoint-path">/glosario/terminos/{termino_id}</span>
+      <span class="pill pill-oga">🔒 Solo OGA</span>
+    </div>
+    <h4>Body: <code>TerminoUpdate</code> — todos los campos opcionales</h4>
+    <h4>Devuelve: <code>Termino</code> actualizado | 404 si no existe</h4>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="badge badge-del">DELETE</span>
+      <span class="endpoint-path">/glosario/terminos/{termino_id}</span>
+      <span class="pill pill-oga">🔒 Solo OGA</span>
+    </div>
+    <p>Soft delete: pone <code>sn_activo=0</code>, NO borra físicamente la fila.</p>
+    <h4>Query: <code>motivo</code> (str, opcional)</h4>
+    <h4>Devuelve: <code>OkResponse</code> | 404</h4>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="badge badge-get">GET</span>
+      <span class="endpoint-path">/glosario/terminos/{termino_id}/casos-uso</span>
+      <span class="pill pill-open">🔓 Público</span>
+    </div>
+    <h4>Devuelve: <code>list[{id_caso_uso, descripcion}]</code></h4>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="badge badge-put">PUT</span>
+      <span class="endpoint-path">/glosario/terminos/{termino_id}/casos-uso</span>
+      <span class="pill pill-oga">🔒 Solo OGA</span>
+    </div>
+    <p>Sincronización completa: activa los IDs enviados, desactiva los que no están en la lista. No borra filas.</p>
+    <h4>Body: <code>{"casos_uso_ids": [1, 5, 12]}</code></h4>
+    <h4>Devuelve: <code>OkResponse</code></h4>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="badge badge-get">GET</span>
+      <span class="endpoint-path">/glosario/dominios-mapa</span>
+      <span class="pill pill-open">🔓 Público</span>
+    </div>
+    <p>Conteo de términos activos agrupados por dominio. El frontend lo usa para el sidebar con los filtros de dominio.</p>
+    <h4>Devuelve: <code>list[DominioMapa]</code></h4>
+    <pre>[{ "dominio": "Retail", "count": 45 }, { "dominio": "Seguros", "count": 23 }, ...]</pre>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════ EP: DOMINIOS -->
+<section id="ep-dominios">
+  <h2>/dominios — Dominios de Negocio</h2>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="badge badge-get">GET</span>
+      <span class="endpoint-path">/dominios</span>
+      <span class="pill pill-open">🔓 Público</span>
+    </div>
+    <h4>Query: <code>activos_only</code> (bool, default true)</h4>
+    <h4>Devuelve: <code>list[Dominio]</code></h4>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="badge badge-get">GET</span>
+      <span class="endpoint-path">/dominios/{dominio_id}</span>
+      <span class="pill pill-open">🔓 Público</span>
+    </div>
+    <h4>Devuelve: <code>Dominio</code> | 404</h4>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="badge badge-get">GET</span>
+      <span class="endpoint-path">/dominios/{dominio_id}/estadisticas</span>
+      <span class="pill pill-open">🔓 Público</span>
+    </div>
+    <p>Ejecuta 6 queries en paralelo usando <code>asyncio.gather + ThreadPoolExecutor</code>. Mucho más rápido que ejecutarlas en serie.</p>
+    <h4>Devuelve: <code>DominioStats</code></h4>
+    <pre>{
+  "cant_casos": 12,       // Casos de uso activos
+  "cant_terminos": 45,    // Términos con este dominio
+  "cant_atributos": 23,   // Atributos con este dominio
+  "cant_artefactos": 8,   // Artefactos únicos
+  "cant_tablas": 34,      // Tablas oficiales del dominio
+  "cant_estructura": 5,   // Usuarios en estructura del dominio
+  "porc_avance": 66.7     // % avances completados
+}</pre>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="badge badge-get">GET</span>
+      <span class="endpoint-path">/dominios/{dominio_id}/tablas-oficiales</span>
+      <span class="pill pill-open">🔓 Público</span>
+    </div>
+    <p>Tablas de <code>t_tablas_oficiales</code> que tienen el nombre del dominio en su campo <code>dominios</code>.</p>
+    <h4>Devuelve: <code>list[{id, plataforma, servidor, base, esquema, tabla, descripcion_tabla, data_owner, nombre_data_owner}]</code></h4>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="badge badge-get">GET</span>
+      <span class="endpoint-path">/dominios/{dominio_id}/terminos</span>
+      <span class="pill pill-open">🔓 Público</span>
+    </div>
+    <h4>Query: <code>tipo</code> (TERMINO | ATRIBUTO, opcional)</h4>
+    <h4>Devuelve: <code>list[{id, nombre, tipo, descripcion, golden_record, dato_personal}]</code></h4>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="badge badge-get">GET</span>
+      <span class="endpoint-path">/dominios/{dominio_id}/avances</span>
+      <span class="pill pill-open">🔓 Público</span>
+    </div>
+    <p>Checklist de ítems de avance del dominio con su estado completado/pendiente.</p>
+    <h4>Devuelve: <code>list[AvanceDominio]</code></h4>
+    <pre>[{ "id_avance": 1, "descripcion": "Definir data owner", "completado": true, "fecha_completado": "2024-01-15", "responsable": "jgutierrez" }]</pre>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="badge badge-post">POST</span>
+      <span class="endpoint-path">/dominios</span>
+      <span class="pill pill-oga">🔒 Solo OGA</span>
+      <span class="badge badge-post">201</span>
+    </div>
+    <h4>Body: <code>DominioCreate</code> — descripcion_dominio requerido</h4>
+    <h4>Devuelve: <code>Dominio</code> creado</h4>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="badge badge-put">PUT</span>
+      <span class="endpoint-path">/dominios/{dominio_id}</span>
+      <span class="pill pill-oga">🔒 Solo OGA</span>
+    </div>
+    <h4>Body: <code>DominioUpdate</code> — todos opcionales</h4>
+    <h4>Devuelve: <code>Dominio</code> actualizado</h4>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="badge badge-put">PUT</span>
+      <span class="endpoint-path">/dominios/{dominio_id}/avances/{item_id}</span>
+      <span class="pill pill-oga">🔒 Solo OGA</span>
+    </div>
+    <p>Marca o desmarca un ítem del checklist. Si <code>completado=true</code>, guarda <code>fecha_completado=NOW()</code>. Si false, limpia la fecha.</p>
+    <h4>Body: <code>{"completado": true}</code></h4>
+    <h4>Devuelve: <code>AvanceDominio</code> actualizado</h4>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════ EP: METADATOS -->
+<section id="ep-metadatos">
+  <h2>/metadatos — Explorador de Metadatos</h2>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="badge badge-get">GET</span>
+      <span class="endpoint-path">/metadatos/filtros</span>
+      <span class="pill pill-open">🔓 Público</span>
+    </div>
+    <p>Listas de valores únicos para construir los filtros desplegables en la UI.</p>
+    <h4>Devuelve: <code>FiltrosMetadatos</code></h4>
+    <pre>{ "servidores": ["SRV01","SRV02"], "plataformas": ["Oracle","SQL Server"], "clasificaciones": [{"id":1,"nombre":"OFICIAL"},...] }</pre>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="badge badge-get">GET</span>
+      <span class="endpoint-path">/metadatos/tablas</span>
+      <span class="pill pill-open">🔓 Público</span>
+    </div>
+    <p>Lista paginada de tablas oficiales con 9 filtros combinables.</p>
+    <h4>Query params</h4>
+    <table>
+      <tr><th>Parámetro</th><th>Descripción</th></tr>
+      <tr><td>page, page_size</td><td>Paginación (max 200)</td></tr>
+      <tr><td>plataforma, servidor, base, esquema</td><td>Filtros de ubicación</td></tr>
+      <tr><td>clasificacion</td><td>OFICIAL | TRABAJO | TEMPORAL | DESUSO</td></tr>
+      <tr><td>tabla</td><td>Búsqueda por nombre de tabla</td></tr>
+      <tr><td>owner_q</td><td>Búsqueda por email/nombre de owner</td></tr>
+      <tr><td>owner_type</td><td>"owner" | "steward"</td></tr>
+    </table>
+    <h4>Devuelve: <code>PaginatedResponse[TablaOficial]</code></h4>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="badge badge-get">GET</span>
+      <span class="endpoint-path">/metadatos/tablas/{tabla_id}</span>
+      <span class="pill pill-open">🔓 Público</span>
+    </div>
+    <h4>Devuelve: <code>TablaOficial</code> completo | 404</h4>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="badge badge-put">PUT</span>
+      <span class="endpoint-path">/metadatos/tablas/{tabla_id}</span>
+      <span class="pill pill-any">🔑 Cualquier autenticado</span>
+    </div>
+    <div class="alert alert-warn">
+      <strong>⚠️ Lógica condicional OGA/No-OGA:</strong><br>
+      • <strong>Usuario OGA:</strong> aplica el cambio directamente en <code>t_tablas_oficiales</code> → devuelve tabla actualizada<br>
+      • <strong>Usuario No-OGA:</strong> crea solicitudes PENDIENTES en <code>t_aprobaciones</code> (una por cada campo modificado) → devuelve tabla SIN CAMBIOS (con HTTP 200)
+    </div>
+    <h4>Body: <code>TablaUpdate</code> — cualquiera de estos campos (todos opcionales):</h4>
+    <pre>{
+  "descripcion_tabla": "...",
+  "data_owner": "jgutierrez@bancoguayaquil.com",
+  "nombre_data_owner": "Juan Gutierrez",
+  "data_steward": "hangulo@bancoguayaquil.com",
+  "nombre_data_steward": "Hugo Angulo",
+  "id_clasificacion": 1,    // 1=OFICIAL 2=TRABAJO 3=TEMPORAL 4=DESUSO
+  "etiquetas": "GOLD",      // medallón
+  "dominios": "Retail;Seguros"
+}</pre>
+    <h4>Devuelve: <code>TablaOficial</code></h4>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="badge badge-get">GET</span>
+      <span class="endpoint-path">/metadatos/tablas/{tabla_id}/recomendaciones</span>
+      <span class="pill pill-open">🔓 Público</span>
+    </div>
+    <p>Analiza los campos de la tabla sin documentación y genera sugerencias de descripción basadas en prefijos estándar del banco.</p>
+    <table>
+      <tr><th>Prefijo del campo</th><th>Sugerencia generada</th></tr>
+      <tr><td>id_</td><td>"Identificador único de..."</td></tr>
+      <tr><td>cod_</td><td>"Código de..."</td></tr>
+      <tr><td>txt_</td><td>"Texto descriptivo de..."</td></tr>
+      <tr><td>flg_ / sn_</td><td>"Indicador binario (S/N) de..."</td></tr>
+      <tr><td>fec_ / fecha_</td><td>"Fecha de..."</td></tr>
+      <tr><td>num_</td><td>"Cantidad numérica de..."</td></tr>
+    </table>
+    <h4>Devuelve: <code>list[RecomendacionDoc]</code></h4>
+    <pre>[{ "campo": "id_cliente", "sugerencia": "Identificador único de cliente", "prefijo_detectado": "id_" }]</pre>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="badge badge-get">GET</span>
+      <span class="endpoint-path">/metadatos/campos</span>
+      <span class="pill pill-open">🔓 Público</span>
+    </div>
+    <p>Lista de campos con búsqueda multi-columna y filtros.</p>
+    <h4>Query params principales: <code>tabla_id, buscar, plataforma, servidor, base, esquema, tabla</code></h4>
+    <h4>Devuelve: <code>PaginatedResponse[Campo]</code></h4>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="badge badge-put">PUT</span>
+      <span class="endpoint-path">/metadatos/campos/{tabla_id}/{campo_nombre}</span>
+      <span class="pill pill-oga">🔒 Solo OGA</span>
+    </div>
+    <h4>Body: <code>{"detalle": "...", "descripcion": "..."}</code></h4>
+    <h4>Devuelve: <code>OkResponse</code></h4>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="badge badge-get">GET</span>
+      <span class="endpoint-path">/metadatos/arbol</span>
+      <span class="pill pill-open">🔓 Público</span>
+    </div>
+    <p>Árbol jerárquico servidor → base → esquema → [tablas]. Respuesta cacheada 15 minutos. La segunda llamada dentro de 15 min no toca la BD.</p>
+    <h4>Devuelve: <code>ArbolMetadatos</code></h4>
+    <pre>{
+  "servidores": [{
+    "nombre": "SRV01",
+    "bases": [{
+      "nombre": "PROCESOS_BI",
+      "esquemas": [{
+        "nombre": "DBO",
+        "tablas": ["t_clientes", "t_productos", ...]
+      }]
+    }]
+  }],
+  "cached_at": "2024-01-15T10:30:00"
+}</pre>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="badge badge-del">DELETE</span>
+      <span class="endpoint-path">/metadatos/arbol/cache</span>
+      <span class="pill pill-oga">🔒 Solo OGA</span>
+    </div>
+    <p>Invalida el cache del árbol. La siguiente llamada a <code>GET /arbol</code> reconstruirá desde BD.</p>
+    <h4>Devuelve: <code>OkResponse</code></h4>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="badge badge-get">GET</span>
+      <span class="endpoint-path">/metadatos/owners-facets</span>
+      <span class="pill pill-open">🔓 Público</span>
+    </div>
+    <h4>Query: <code>tipo</code> ("owner" | "steward")</h4>
+    <h4>Devuelve: <code>list[str]</code> — emails únicos para autocompletado</h4>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="badge badge-get">GET</span>
+      <span class="endpoint-path">/metadatos/empleados</span>
+      <span class="pill pill-open">🔓 Público</span>
+    </div>
+    <p>Lista de empleados activos para el selector de data owner/steward en formularios.</p>
+    <h4>Devuelve: <code>list[Empleado]</code> — [{codigo, nombre_completo}]</h4>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════ EP: APROBACIONES -->
+<section id="ep-aprobaciones">
+  <h2>/aprobaciones — Workflow de Aprobaciones</h2>
+
+  <div class="alert alert-info">
+    <strong>Tipos de cambio:</strong> Cada solicitud tiene un <code>tipo_cambio</code> que determina qué UPDATE se ejecuta al aprobar.<br>
+    1=Data Owner · 2=Data Steward · 3=Clasificación · 4=Dominios (INSERT múltiple) · 5=Descripción tabla · 9=Etiqueta/Medallón
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="badge badge-get">GET</span>
+      <span class="endpoint-path">/aprobaciones</span>
+      <span class="pill pill-any">🔑 Autenticado</span>
+    </div>
+    <h4>Query: <code>estado</code> (PENDIENTE|APROBADO|RECHAZADO|TODOS), <code>buscar</code>, <code>page</code>, <code>page_size</code></h4>
+    <h4>Devuelve: <code>PaginatedResponse[Aprobacion]</code></h4>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="badge badge-get">GET</span>
+      <span class="endpoint-path">/aprobaciones/{aprobacion_id}</span>
+      <span class="pill pill-any">🔑 Autenticado</span>
+    </div>
+    <h4>Devuelve: <code>Aprobacion</code> | 404</h4>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="badge badge-post">POST</span>
+      <span class="endpoint-path">/aprobaciones</span>
+      <span class="pill pill-any">🔑 Autenticado</span>
+      <span class="badge badge-post">201</span>
+    </div>
+    <p>Crea una solicitud PENDIENTE manualmente. Normalmente las solicitudes se crean automáticamente desde <code>PUT /metadatos/tablas/{id}</code> para usuarios no-OGA.</p>
+    <h4>Body: <code>AprobacionCreate</code></h4>
+    <pre>{
+  "tipo_cambio": 1,                       // 1|2|3|4|5|9
+  "original": "owner_anterior@bg.com",
+  "solicitado": "nuevo_owner@bg.com",
+  "dato1": "42",                          // ID de la tabla afectada
+  "dato2": "Nombre del nuevo owner",
+  "descripcion_cambio": "Cambio de DO"
+}</pre>
+    <h4>Devuelve: <code>Aprobacion</code> con estado PENDIENTE</h4>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="badge badge-post">POST</span>
+      <span class="endpoint-path">/aprobaciones/{aprobacion_id}/aprobar</span>
+      <span class="pill pill-oga">🔒 Solo OGA</span>
+    </div>
+    <p>Aprueba la solicitud y ejecuta el cambio correspondiente según <code>tipo_cambio</code>:</p>
+    <table>
+      <tr><th>tipo_cambio</th><th>Acción en BD</th></tr>
+      <tr><td>1 — Data Owner</td><td>UPDATE t_tablas_oficiales SET data_owner, nombre_data_owner, fecha_modificacion_do</td></tr>
+      <tr><td>2 — Data Steward</td><td>UPDATE t_tablas_oficiales SET data_steward, nombre_data_steward, fecha_modificacion_ds</td></tr>
+      <tr><td>3 — Clasificación</td><td>UPDATE t_tablas_oficiales SET id_clasificacion (OFICIAL→1, TRABAJO→2, TEMPORAL→3, DESUSO→4)</td></tr>
+      <tr><td>4 — Dominios</td><td>INSERT IGNORE INTO t_dominios_tablas_oficiales (múltiples IDs separados por ";")</td></tr>
+      <tr><td>5 — Descripción</td><td>UPDATE t_tablas_oficiales SET descripcion_tabla</td></tr>
+      <tr><td>9 — Medallón</td><td>UPDATE t_tablas_oficiales SET etiquetas</td></tr>
+    </table>
+    <p>Después del cambio: actualiza estado a APROBADO, guarda FECHA_RESOLUCION=NOW() y registra en <code>t_auditoria_cambios</code>.</p>
+    <h4>Body: <code>{"comentario": "..."}</code> (opcional)</h4>
+    <h4>Devuelve: <code>Aprobacion</code> con estado APROBADO</h4>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="badge badge-post">POST</span>
+      <span class="endpoint-path">/aprobaciones/{aprobacion_id}/rechazar</span>
+      <span class="pill pill-oga">🔒 Solo OGA</span>
+    </div>
+    <p>Rechaza la solicitud. Guarda el motivo en DATO8. Registra en auditoría.</p>
+    <h4>Body: <code>{"motivo": "No corresponde cambiar este owner"}</code> (requerido)</h4>
+    <h4>Devuelve: <code>Aprobacion</code> con estado RECHAZADO</h4>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════ EP: CASOS USO -->
+<section id="ep-casos">
+  <h2>/casos-uso — Casos de Uso Analítico</h2>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="badge badge-get">GET</span>
+      <span class="endpoint-path">/casos-uso</span>
+      <span class="pill pill-open">🔓 Público</span>
+    </div>
+    <h4>Query: <code>id_dominio, subdominio, buscar, estado, page, page_size</code></h4>
+    <h4>Devuelve: <code>PaginatedResponse[CasoUso]</code></h4>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="badge badge-get">GET</span>
+      <span class="endpoint-path">/casos-uso/subdominios</span>
+      <span class="pill pill-open">🔓 Público</span>
+    </div>
+    <h4>Query: <code>id_dominio</code> (opcional)</h4>
+    <h4>Devuelve: <code>list[Subdominio]</code></h4>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="badge badge-get">GET</span>
+      <span class="endpoint-path">/casos-uso/contadores-estado</span>
+      <span class="pill pill-open">🔓 Público</span>
+    </div>
+    <h4>Query: <code>id_dominio</code> (opcional)</h4>
+    <h4>Devuelve: <code>{"activos": 10, "terminados": 5, "total": 15}</code></h4>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="badge badge-get">GET</span>
+      <span class="endpoint-path">/casos-uso/{caso_id}</span>
+      <span class="pill pill-open">🔓 Público</span>
+    </div>
+    <h4>Devuelve: <code>CasoUso</code> | 404</h4>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="badge badge-post">POST</span>
+      <span class="endpoint-path">/casos-uso</span>
+      <span class="pill pill-oga">🔒 Solo OGA</span>
+      <span class="badge badge-post">201</span>
+    </div>
+    <h4>Body: <code>CasoUsoCreate</code> — descripcion_caso_uso e id_dominio requeridos</h4>
+    <h4>Devuelve: <code>CasoUso</code></h4>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="badge badge-put">PUT</span>
+      <span class="endpoint-path">/casos-uso/{caso_id}</span>
+      <span class="pill pill-oga">🔒 Solo OGA</span>
+    </div>
+    <h4>Body: <code>CasoUsoUpdate</code> — todos opcionales</h4>
+    <h4>Devuelve: <code>CasoUso</code></h4>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="badge badge-del">DELETE</span>
+      <span class="endpoint-path">/casos-uso/{caso_id}</span>
+      <span class="pill pill-oga">🔒 Solo OGA</span>
+    </div>
+    <p>Soft delete (sn_activo=0).</p>
+    <h4>Devuelve: <code>OkResponse</code></h4>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="badge badge-get">GET</span>
+      <span class="endpoint-path">/casos-uso/{caso_id}/fuentes</span>
+      <span class="pill pill-open">🔓 Público</span>
+    </div>
+    <h4>Devuelve: <code>list[Fuente]</code> — fuentes de datos vinculadas</h4>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="badge badge-post">POST</span>
+      <span class="endpoint-path">/casos-uso/{caso_id}/fuentes</span>
+      <span class="pill pill-oga">🔒 Solo OGA</span>
+    </div>
+    <h4>Body: <code>FuenteCreate</code> — id_fuente_aprovisionamiento y txt_tabla requeridos</h4>
+    <h4>Devuelve: <code>Fuente</code> creada</h4>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="badge badge-del">DELETE</span>
+      <span class="endpoint-path">/casos-uso/{caso_id}/fuentes/{fuente_id}</span>
+      <span class="pill pill-oga">🔒 Solo OGA</span>
+    </div>
+    <h4>Devuelve: <code>OkResponse</code></h4>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="badge badge-get">GET</span>
+      <span class="endpoint-path">/casos-uso/{caso_id}/terminos</span>
+      <span class="pill pill-open">🔓 Público</span>
+    </div>
+    <h4>Devuelve: <code>list[{id, nombre, tipo, descripcion}]</code></h4>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════ EP: CAMPANIAS -->
+<section id="ep-campanias">
+  <h2>/campanias — Campañas e Iniciativas</h2>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="badge badge-get">GET</span>
+      <span class="endpoint-path">/campanias/clasificaciones</span>
+      <span class="pill pill-open">🔓 Público</span>
+    </div>
+    <p>Retorna todas las clasificaciones con conteos calculados dinámicamente. Un seguimiento se considera "terminado" si <code>estado='T'</code> OR <code>fecha_fin &lt; hoy</code>.</p>
+    <h4>Devuelve: <code>list[CampaniaClasificacion]</code></h4>
+    <pre>[{ "id": 1, "descripcion": "Campaña Q1", "tipo": "A", "estado": "ACTIVO", "num_activos": 5, "num_terminados": 2, "num_total": 7 }]</pre>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="badge badge-post">POST</span>
+      <span class="endpoint-path">/campanias/clasificaciones</span>
+      <span class="pill pill-oga">🔒 Solo OGA</span>
+      <span class="badge badge-post">201</span>
+    </div>
+    <h4>Body: <code>CampaniaClasificacionCreate</code> — descripcion requerida</h4>
+    <h4>Devuelve: <code>CampaniaClasificacion</code> con conteos (ambos en 0 al crear)</h4>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="badge badge-get">GET</span>
+      <span class="endpoint-path">/campanias/seguimiento</span>
+      <span class="pill pill-open">🔓 Público</span>
+    </div>
+    <p>Agrupa iniciativas por <code>codigo_iniciativa</code> y calcula conteos A/T por grupo. Detecta automáticamente si están terminadas.</p>
+    <h4>Query: <code>clasificacion_id</code>, <code>estado</code> (opcionales)</h4>
+    <h4>Devuelve: <code>list[CampaniaSeguimientoResumen]</code></h4>
+    <pre>[{ "codigo_iniciativa": "INI-001", "nombre": "Migración Cloud", "num_activos": 3, "num_terminados": 1, "valor": 150000, "terminado": false }]</pre>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="badge badge-get">GET</span>
+      <span class="endpoint-path">/campanias/estadisticas</span>
+      <span class="pill pill-open">🔓 Público</span>
+    </div>
+    <h4>Query: <code>clasificacion_id</code> (opcional)</h4>
+    <h4>Devuelve: <code>CampaniaStats</code></h4>
+    <pre>{ "total_clasificaciones": 8, "total_iniciativas": 45, "total_activas": 38, "total_terminadas": 7 }</pre>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════ EP: ANALYTICS -->
+<section id="ep-analytics">
+  <h2>/analytics — Analytics de Uso</h2>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="badge badge-post">POST</span>
+      <span class="endpoint-path">/analytics/visitas</span>
+      <span class="pill pill-any">🔑 Autenticado</span>
+    </div>
+    <p>Registra que el usuario navegó a una página. Los errores se silencian — si falla la inserción, el endpoint devuelve OK igual para no impactar la UX.</p>
+    <h4>Body:</h4>
+    <pre>{ "desc_pagina": "GLOSARIO", "sub_pagina": "termino/42" }</pre>
+    <h4>Devuelve: <code>OkResponse</code></h4>
+    <p style="font-size:12px;color:var(--text3);">Registra en <code>T_visitas_oga_new</code>: USUARIO, CODIGO_EMPLEADO, DESC_PAGINA, SUB_PAGINA, CENTRO_COSTO, DEPARTAMENTO, FECHA=NOW()</p>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="badge badge-get">GET</span>
+      <span class="endpoint-path">/analytics/visitas/resumen</span>
+      <span class="pill pill-oga">🔒 Solo OGA</span>
+    </div>
+    <p>Resumen de visitas agrupadas por página, ordenado por total descendente.</p>
+    <h4>Devuelve: <code>list[VisitaResumen]</code></h4>
+    <pre>[{ "desc_pagina": "GLOSARIO", "total_visitas": 1250, "ultimo_acceso": "2024-01-15T14:30:00" }]</pre>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════ MÓDULOS COMPLETOS -->
+<section id="mod-auth">
+  <h2>Módulo Autenticación — Conexión completa</h2>
+  <div class="flow">
+    <div class="flow-box flow-router">routers/auth.py</div>
+    <span class="flow-arrow">→</span>
+    <div class="flow-box flow-service">services/auth_service.py</div>
+    <span class="flow-arrow">→</span>
+    <div class="flow-box flow-model">models/auth.py</div>
+    <span class="flow-arrow">→</span>
+    <div class="flow-box flow-db">tmp_datos_empleados<br>t_oga_usuarios</div>
+  </div>
+  <div class="grid2" style="margin-top:16px;">
+    <div class="arch-box">
+      <h4>routers/auth.py — Qué hace</h4>
+      <ul>
+        <li><strong>GET /auth/me</strong> → depende de <code>get_current_user</code>, llama <code>auth_service.get_me_response()</code></li>
+        <li><strong>GET /auth/health</strong> → llama <code>check_db_health()</code> directamente (sin auth)</li>
+      </ul>
+    </div>
+    <div class="arch-box">
+      <h4>services/auth_service.py — Funciones</h4>
+      <ul>
+        <li><code>enrich_user(conn, token_payload)</code> — construye CurrentUser desde JWT + BD, cacheable</li>
+        <li><code>_get_empleado_data(conn, username)</code> — SELECT de tmp_datos_empleados por web_user</li>
+        <li><code>_check_is_oga(conn, email)</code> — COUNT en t_oga_usuarios por email activo</li>
+        <li><code>get_me_response(user)</code> — convierte CurrentUser a MeResponse serializable</li>
+        <li><code>_build_permissions(is_oga)</code> — construye PermissionsMap según rol</li>
+      </ul>
+    </div>
+  </div>
+  <div class="card" style="margin-top:12px;">
+    <h4>models/auth.py — Clases usadas</h4>
+    <p><code>CurrentUser</code> — objeto interno inyectado como Dependency. Contiene todo: datos BD + claims JWT + permisos.</p>
+    <p><code>MeResponse</code> — lo que ve el frontend en <code>GET /auth/me</code>. Incluye <code>UserInfo</code> + <code>is_oga</code> + <code>PermissionsMap</code>.</p>
+    <p><code>PermissionsMap</code> — 5 sub-objetos de permisos: <code>GlosarioPermisos</code>, <code>MetadatosPermisos</code>, <code>AprobacionesPermisos</code>, <code>DominiosPermisos</code>, <code>CampaniasPermisos</code>.</p>
+  </div>
+</section>
+
+<section id="mod-glosario">
+  <h2>Módulo Glosario — Conexión completa</h2>
+  <div class="flow">
+    <div class="flow-box flow-router">routers/terminos.py</div>
+    <span class="flow-arrow">→</span>
+    <div class="flow-box flow-service">services/terminos_service.py</div>
+    <span class="flow-arrow">→</span>
+    <div class="flow-box flow-model">models/terminos.py + common.py</div>
+    <span class="flow-arrow">→</span>
+    <div class="flow-box flow-db">t_terminos<br>T_CASOS_USO_TERMINOS_MB<br>t_mapa_dominios</div>
+  </div>
+  <div class="arch-box" style="margin-top:16px;">
+    <h4>services/terminos_service.py — Todas las funciones</h4>
+    <ul>
+      <li><code>get_terminos(conn, page, page_size, buscar, tipo, dominio, golden_record, dato_personal, caracteristica)</code> — SELECT paginado con WHERE dinámico construido en Python (no en el cliente)</li>
+      <li><code>get_terminos_recientes(conn, limit)</code> — ORDER BY COALESCE(fecha_modificacion, fecha_creacion) DESC LIMIT N</li>
+      <li><code>get_termino_by_id(conn, id)</code> — SELECT + lanza NotFoundException si no existe</li>
+      <li><code>buscar_duplicado(conn, nombre, tipo, exclude_id)</code> — compara UPPER(nombre) para ser case-insensitive</li>
+      <li><code>crear_termino(conn, data, autor_codigo)</code> — verifica duplicado, auto-asigna subcategoría, INSERT, retorna recién creado</li>
+      <li><code>actualizar_termino(conn, id, data, autor_codigo)</code> — solo actualiza campos enviados (no None)</li>
+      <li><code>desactivar_termino(conn, id, motivo, autor_codigo)</code> — UPDATE sn_activo=0</li>
+      <li><code>get_casos_uso_del_termino(conn, id)</code> — JOIN T_CASOS_USO_TERMINOS_MB + t_casos_uso_analitica</li>
+      <li><code>sync_casos_uso(conn, id, casos_ids, autor)</code> — activa nuevos, desactiva removidos (INSERT o UPDATE, nunca DELETE)</li>
+      <li><code>get_dominios_mapa(conn)</code> — GROUP BY dominio con COUNT de términos que lo mencionan</li>
+      <li><code>get_crosslinks(conn)</code> — SELECT id, nombre, tipo ordenado por LENGTH(nombre) DESC (para que al detectar ocurrencias se prioricen los más largos)</li>
+    </ul>
+  </div>
+</section>
+
+<section id="mod-dominios">
+  <h2>Módulo Dominios — Conexión completa</h2>
+  <div class="flow">
+    <div class="flow-box flow-router">routers/dominios.py</div>
+    <span class="flow-arrow">→</span>
+    <div class="flow-box flow-service">services/dominios_service.py</div>
+    <span class="flow-arrow">→</span>
+    <div class="flow-box flow-model">models/dominios.py</div>
+    <span class="flow-arrow">→</span>
+    <div class="flow-box flow-db">t_mapa_dominios<br>T_DOMINIO_AVANCES<br>t_tablas_oficiales<br>t_terminos<br>T_ARTEFACTOS<br>t_estructura_dominio<br>t_casos_uso_analitica</div>
+  </div>
+  <div class="arch-box" style="margin-top:16px;">
+    <h4>services/dominios_service.py — Funciones destacadas</h4>
+    <ul>
+      <li><code>get_estadisticas(conn, dominio_id)</code> — lanza 6 queries en <strong>paralelo</strong> con asyncio.gather + ThreadPoolExecutor: _count_casos, _count_terminos, _count_artefactos, _count_estructura, _count_tablas, _count_avances</li>
+      <li><code>_count_terminos(conn, nombre_dominio)</code> — usa LOCATE(%s, IFNULL(dominios,'')) para buscar el nombre del dominio dentro del campo CSV de dominios</li>
+      <li><code>actualizar_avance(conn, dominio_id, item_id, data)</code> — si completado=True pone NOW(), si False pone NULL</li>
+      <li><code>actualizar_dominio(conn, id, data)</code> — construcción dinámica del SET con solo los campos no-None</li>
+    </ul>
+  </div>
+</section>
+
+<section id="mod-metadatos">
+  <h2>Módulo Metadatos — Conexión completa</h2>
+  <div class="flow">
+    <div class="flow-box flow-router">routers/metadatos.py</div>
+    <span class="flow-arrow">→</span>
+    <div class="flow-box flow-service">services/metadatos_service.py<br>+ aprobaciones_service.py</div>
+    <span class="flow-arrow">→</span>
+    <div class="flow-box flow-model">models/metadatos.py + aprobaciones.py</div>
+    <span class="flow-arrow">→</span>
+    <div class="flow-box flow-db">t_tablas_oficiales<br>t_campos_tablas_oficiales<br>t_aprobaciones<br>tmp_datos_empleados</div>
+  </div>
+  <div class="alert alert-warn" style="margin-top:16px;">
+    <strong>Punto clave — routers/metadatos.py línea 63:</strong> El router decide por sí mismo qué servicio llamar según <code>current_user.is_oga</code>. Si OGA: llama <code>metadatos_service.update_tabla()</code>. Si no: llama <code>aprobaciones_service.crear_desde_tabla_update()</code> que crea una Aprobación por cada campo diferente enviado.
+  </div>
+  <div class="arch-box" style="margin-top:12px;">
+    <h4>services/metadatos_service.py — Funciones destacadas</h4>
+    <ul>
+      <li><code>get_arbol(conn)</code> — construye árbol jerárquico en Python agrupando filas SQL, cachea resultado en _arbol_cache (TTL 15min)</li>
+      <li><code>get_recomendaciones(conn, tabla_id)</code> — analiza campos con DETALLE vacío y aplica reglas de prefijo para sugerir descripciones</li>
+      <li><code>get_tablas(conn, ...filtros)</code> — WHERE dinámico con hasta 8 condiciones combinadas</li>
+      <li><code>update_tabla(conn, id, data, email, codigo)</code> — construye dinámicamente solo las columnas enviadas</li>
+    </ul>
+  </div>
+</section>
+
+<section id="mod-aprobaciones">
+  <h2>Módulo Aprobaciones — Conexión completa</h2>
+  <div class="flow">
+    <div class="flow-box flow-router">routers/aprobaciones.py</div>
+    <span class="flow-arrow">→</span>
+    <div class="flow-box flow-service">services/aprobaciones_service.py</div>
+    <span class="flow-arrow">→</span>
+    <div class="flow-box flow-model">models/aprobaciones.py</div>
+    <span class="flow-arrow">→</span>
+    <div class="flow-box flow-db">t_aprobaciones<br>t_tablas_oficiales<br>t_dominios_tablas_oficiales<br>t_auditoria_cambios</div>
+  </div>
+  <div class="arch-box" style="margin-top:16px;">
+    <h4>services/aprobaciones_service.py — Funciones</h4>
+    <ul>
+      <li><code>_aplicar_cambio(conn, aprobacion, autor_codigo)</code> — switch por tipo_cambio que ejecuta el UPDATE/INSERT específico</li>
+      <li><code>aprobar_aprobacion(conn, id, body, email, codigo)</code> — llama _aplicar_cambio, actualiza estado APROBADO, llama _registrar_auditoria</li>
+      <li><code>rechazar_aprobacion(conn, id, body, email)</code> — actualiza RECHAZADO + DATO8=motivo, llama _registrar_auditoria</li>
+      <li><code>_registrar_auditoria(...)</code> — INSERT en t_auditoria_cambios. Si falla, solo loguea un warning (no interrumpe el flujo principal)</li>
+      <li><code>crear_desde_tabla_update(conn, tabla_id, data, email, codigo)</code> — genera una Aprobación PENDIENTE por cada campo no-None en TablaUpdate. Llamado desde el router de metadatos para usuarios no-OGA.</li>
+    </ul>
+  </div>
+</section>
+
+<section id="mod-casos">
+  <h2>Módulo Casos de Uso — Conexión completa</h2>
+  <div class="flow">
+    <div class="flow-box flow-router">routers/casos_uso.py</div>
+    <span class="flow-arrow">→</span>
+    <div class="flow-box flow-service">services/casos_uso_service.py</div>
+    <span class="flow-arrow">→</span>
+    <div class="flow-box flow-model">models/casos_uso.py</div>
+    <span class="flow-arrow">→</span>
+    <div class="flow-box flow-db">t_casos_uso_analitica<br>T_CASOS_USO_FUENTES<br>T_CASOS_USO_TERMINOS_MB<br>t_subdominios</div>
+  </div>
+</section>
+
+<section id="mod-campanias">
+  <h2>Módulo Campañas — Conexión completa</h2>
+  <div class="flow">
+    <div class="flow-box flow-router">routers/campanias.py</div>
+    <span class="flow-arrow">→</span>
+    <div class="flow-box flow-service">services/campanias_service.py</div>
+    <span class="flow-arrow">→</span>
+    <div class="flow-box flow-model">models/campanias.py</div>
+    <span class="flow-arrow">→</span>
+    <div class="flow-box flow-db">t_campanias_clasificacion<br>t_campanias_seguimiento</div>
+  </div>
+  <div class="alert alert-info" style="margin-top:12px;">
+    <strong>Lógica de "terminado":</strong> <code>_es_terminado(estado, fecha_fin)</code> — un seguimiento está terminado si <code>estado == 'T'</code> OR <code>fecha_fin &lt; datetime.now()</code>. Este cálculo ocurre en Python, no en SQL.
+  </div>
+</section>
+
+<section id="mod-analytics">
+  <h2>Módulo Analytics — Conexión completa</h2>
+  <div class="flow">
+    <div class="flow-box flow-router">routers/analytics.py</div>
+    <span class="flow-arrow">→</span>
+    <div class="flow-box flow-service">services/analytics_service.py</div>
+    <span class="flow-arrow">→</span>
+    <div class="flow-box flow-model">models/analytics.py</div>
+    <span class="flow-arrow">→</span>
+    <div class="flow-box flow-db">T_visitas_oga_new</div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════ BD -->
+<section id="db-tablas">
+  <h2>Tablas de Base de Datos</h2>
+  <h3>Tablas existentes (usadas, no modificadas)</h3>
+  <table>
+    <tr><th>Tabla</th><th>Módulos que la usan</th><th>Uso</th></tr>
+    <tr><td><code>t_terminos</code></td><td>Glosario, Dominios</td><td>Glosario empresarial completo</td></tr>
+    <tr><td><code>t_tablas_oficiales</code></td><td>Metadatos, Aprobaciones</td><td>Inventario de tablas del banco</td></tr>
+    <tr><td><code>t_campos_tablas_oficiales</code></td><td>Metadatos</td><td>Campos/columnas de cada tabla</td></tr>
+    <tr><td><code>t_mapa_dominios</code></td><td>Dominios, Glosario</td><td>Dominios de negocio</td></tr>
+    <tr><td><code>T_DOMINIO_AVANCES</code></td><td>Dominios</td><td>Checklist de avance por dominio</td></tr>
+    <tr><td><code>t_casos_uso_analitica</code></td><td>Casos de Uso</td><td>Casos de uso analítico</td></tr>
+    <tr><td><code>T_CASOS_USO_FUENTES</code></td><td>Casos de Uso</td><td>Fuentes de datos por caso</td></tr>
+    <tr><td><code>T_CASOS_USO_TERMINOS_MB</code></td><td>Glosario, Casos de Uso</td><td>Relación M:N caso-término</td></tr>
+    <tr><td><code>t_subdominios</code></td><td>Casos de Uso</td><td>Subdominios de negocio</td></tr>
+    <tr><td><code>t_aprobaciones</code></td><td>Aprobaciones, Metadatos</td><td>Solicitudes de cambio pendientes</td></tr>
+    <tr><td><code>t_dominios_tablas_oficiales</code></td><td>Aprobaciones</td><td>Relación M:N dominio-tabla</td></tr>
+    <tr><td><code>t_campanias_clasificacion</code></td><td>Campañas</td><td>Clasificaciones de campañas</td></tr>
+    <tr><td><code>t_campanias_seguimiento</code></td><td>Campañas</td><td>Iniciativas de seguimiento</td></tr>
+    <tr><td><code>T_visitas_oga_new</code></td><td>Analytics</td><td>Log de visitas de usuarios</td></tr>
+    <tr><td><code>T_ARTEFACTOS</code></td><td>Dominios</td><td>Artefactos analíticos por dominio</td></tr>
+    <tr><td><code>t_estructura_dominio</code></td><td>Dominios</td><td>Estructura de equipo por dominio</td></tr>
+    <tr><td><code>tmp_datos_empleados</code></td><td>Auth</td><td>Datos de empleados (web_user → código)</td></tr>
+  </table>
+</section>
+
+<section id="db-migracion">
+  <h2>Migración SQL — Tablas nuevas</h2>
+  <p>Archivo: <code>migrations/001_initial_oga_tables.sql</code> — ejecutar una sola vez en MySQL.</p>
+
+  <div class="card">
+    <h3>t_oga_usuarios</h3>
+    <p>Reemplaza los 7 emails hardcodeados en <code>UserContext.jsx</code>. Ahora se gestiona desde BD sin redeploy.</p>
+    <table>
+      <tr><th>Columna</th><th>Tipo</th><th>Descripción</th></tr>
+      <tr><td>id</td><td class="type">INT AUTO_INCREMENT PK</td><td></td></tr>
+      <tr><td>email</td><td class="type">VARCHAR(255) UNIQUE</td><td>Email corporativo (lowercase)</td></tr>
+      <tr><td>username</td><td class="type">VARCHAR(100)</td><td>Parte antes del @</td></tr>
+      <tr><td>rol</td><td class="type">VARCHAR(50)</td><td>OGA_MEMBER | OGA_ADMIN</td></tr>
+      <tr><td>sn_activo</td><td class="type">TINYINT(1)</td><td>1=activo, 0=dado de baja</td></tr>
+      <tr><td>fecha_alta</td><td class="type">DATETIME DEFAULT NOW()</td><td></td></tr>
+    </table>
+    <p>Pre-pobla con los 7 usuarios OGA originales usando <code>INSERT IGNORE</code> (idempotente).</p>
+  </div>
+
+  <div class="card">
+    <h3>t_auditoria_cambios</h3>
+    <p>Log inmutable de todos los cambios realizados a través del backend. Requerido por compliance regulatorio bancario.</p>
+    <table>
+      <tr><th>Columna</th><th>Tipo</th><th>Descripción</th></tr>
+      <tr><td>id</td><td class="type">BIGINT AUTO_INCREMENT PK</td><td></td></tr>
+      <tr><td>tabla_afectada</td><td class="type">VARCHAR(200)</td><td>ej: "t_aprobaciones"</td></tr>
+      <tr><td>operacion</td><td class="type">VARCHAR(10)</td><td>INSERT | UPDATE | DELETE | APROBADO | RECHAZADO</td></tr>
+      <tr><td>registro_id</td><td class="type">VARCHAR(100)</td><td>PK del registro afectado</td></tr>
+      <tr><td>campo_modificado</td><td class="type">VARCHAR(200)</td><td>ej: "tipo_cambio=1"</td></tr>
+      <tr><td>valor_anterior</td><td class="type">TEXT</td><td>Valor antes del cambio</td></tr>
+      <tr><td>valor_nuevo</td><td class="type">TEXT</td><td>Valor después del cambio</td></tr>
+      <tr><td>usuario_email</td><td class="type">VARCHAR(255)</td><td>Email del aprobador/rechazador</td></tr>
+      <tr><td>usuario_codigo</td><td class="type">VARCHAR(50)</td><td>Código empleado</td></tr>
+      <tr><td>fecha_cambio</td><td class="type">DATETIME DEFAULT NOW()</td><td></td></tr>
+      <tr><td>modulo</td><td class="type">VARCHAR(100)</td><td>aprobaciones | metadatos | glosario</td></tr>
+      <tr><td>id_aprobacion</td><td class="type">INT</td><td>FK a t_aprobaciones</td></tr>
+      <tr><td>detalle_json</td><td class="type">TEXT</td><td>Motivo o comentario adicional</td></tr>
+    </table>
+    <p>3 índices: por (tabla_afectada, fecha_cambio), por (usuario_email, fecha_cambio), por (modulo, fecha_cambio).</p>
+  </div>
+
+  <div class="card">
+    <h3>t_configuracion_app</h3>
+    <p>Parámetros de la aplicación modificables en caliente sin redeploy.</p>
+    <table>
+      <tr><th>clave</th><th>valor inicial</th><th>tipo_dato</th></tr>
+      <tr><td>cache_arbol_ttl_minutos</td><td>15</td><td>int</td></tr>
+      <tr><td>cache_terminos_ttl_minutos</td><td>10</td><td>int</td></tr>
+      <tr><td>cache_permisos_ttl_minutos</td><td>5</td><td>int</td></tr>
+      <tr><td>registrar_visitas_activo</td><td>1</td><td>bool</td></tr>
+      <tr><td>version_api</td><td>1.0.0</td><td>string</td></tr>
+    </table>
+  </div>
+</section>
+
+<section>
+  <h2>Cómo arrancar</h2>
+  <div class="card">
+    <pre>cd BackendOgaSuite
+
+# 1. Instalar dependencias
+pip install -r requirements.txt
+
+# 2. Ejecutar migración SQL en MySQL (una sola vez)
+mysql -h 172.26.61.35 -P 3323 -u apl_ogasuite -p BG_OGASUITE < migrations/001_initial_oga_tables.sql
+
+# 3. Verificar .env con credenciales reales
+cat .env
+
+# 4. Arrancar
+uvicorn app.main:app --reload --port 8510
+
+# 5. Verificar
+curl http://localhost:8510/auth/health
+# {"status":"ok","db_connected":true,"version":"1.0.0"}
+
+# 6. Swagger UI
+open http://localhost:8510/docs</pre>
+  </div>
+
+  <div class="alert alert-success">
+    <strong>Todos los endpoints documentados en Swagger:</strong> <code>GET /docs</code> muestra la interfaz interactiva con todos los 42 endpoints, sus parámetros, schemas de request/response y la posibilidad de probarlos con un token Bearer.
+  </div>
+</section>
+
+</main>
+
+<script>
+  // Highlight active nav link on scroll
+  const sections = document.querySelectorAll('section[id]');
+  const links = document.querySelectorAll('nav a[href^="#"]');
+  const obs = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        links.forEach(l => l.classList.remove('active'));
+        const a = document.querySelector(`nav a[href="#${e.target.id}"]`);
+        if (a) a.classList.add('active');
+      }
+    });
+  }, { threshold: 0.2 });
+  sections.forEach(s => obs.observe(s));
+</script>
+
+</body>
+</html>
