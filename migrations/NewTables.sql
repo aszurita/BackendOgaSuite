@@ -9,13 +9,14 @@
 -- Reemplaza la lista hardcodeada de emails OGA en el frontend.
 -- Permite gestionar miembros OGA desde BD sin redeploy.
 -- ============================================================
+USE BG_OGASUITE;
 CREATE TABLE IF NOT EXISTS t_oga_usuarios (
     id              INT           NOT NULL AUTO_INCREMENT PRIMARY KEY,
     email           VARCHAR(255)  NOT NULL,
     nombre_completo VARCHAR(255)  NULL,
     username        VARCHAR(100)  NULL,
     rol             VARCHAR(50)   NOT NULL DEFAULT 'OGA_MEMBER',
-    sn_activo       TINYINT    NOT NULL DEFAULT 1,
+    sn_activo       TINYINT(1)    NOT NULL DEFAULT 1,
     fecha_alta      DATETIME      NOT NULL DEFAULT NOW(),
     fecha_baja      DATETIME      NULL,
     agregado_por    VARCHAR(255)  NULL,

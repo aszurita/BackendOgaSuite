@@ -4,6 +4,12 @@ from datetime import datetime
 
 class CampaniaClasificacionBase(BaseModel):
     descripcion: str | None = None
+    descrip_clasificacion: str | None = None
+    subtipo: str | None = None
+    iniciativas: str | None = None
+    periodo: str | None = None
+    activo: int | None = None
+    fecha_corte: datetime | None = None
     tipo: str | None = None
     estado: str | None = None
 
@@ -24,6 +30,7 @@ class CampaniaClasificacion(CampaniaClasificacionBase):
 class CampaniaSeguimientoResumen(BaseModel):
     codigo_iniciativa: str | None = None
     nombre: str | None = None
+    descripcion_negocio: str | None = None
     estado: str | None = None
     num_activos: int = 0
     num_terminados: int = 0

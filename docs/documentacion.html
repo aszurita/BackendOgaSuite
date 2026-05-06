@@ -128,6 +128,7 @@
       <a href="#ep-casos">/casos-uso — Casos de Uso</a>
       <a href="#ep-campanias">/campanias — Campañas</a>
       <a href="#ep-analytics">/analytics — Analytics</a>
+      <a href="#ep-por-pagina">Endpoints por Página ↗</a>
     </div>
   </div>
 
@@ -301,7 +302,7 @@
 │       ├── campanias_service.py   ← Clasificaciones con conteos, seguimiento agrupado
 │       └── analytics_service.py  ← Registro silencioso de visitas, resumen OGA
 ├── migrations/
-│   └── 001_initial_oga_tables.sql ← 3 tablas nuevas: t_oga_usuarios, t_auditoria_cambios, t_configuracion_app
+│   └── NewTables.sql              ← 4 tablas nuevas: t_oga_usuarios, t_auditoria_cambios, t_configuracion_app, T_VISITAS_OGA_NEW
 ├── .env                           ← Credenciales reales (NO commitear)
 ├── .env.example                   ← Plantilla pública
 └── requirements.txt               ← FastAPI, PyMySQL, python-jose, cachetools, etc.</pre>
@@ -1234,6 +1235,134 @@
   </div>
 </section>
 
+<!-- ═══════════════════════════════════════════════════════ ENDPOINTS POR PÁGINA -->
+<section id="ep-por-pagina">
+  <h2>Endpoints por Página — Glosario de Integración</h2>
+  <p>Esta sección mapea cada pantalla del frontend a los endpoints REST que debe consumir, reemplazando los llamados SQL directos al API genérico (<code>POST /query</code>, <code>POST /insert</code>, <code>PUT /update</code>).</p>
+
+  <div class="alert alert-success">
+    <strong>Objetivo:</strong> El frontend <strong>nunca envía SQL</strong>. Solo llama endpoints semánticos con datos. Toda la lógica de negocio, joins y validaciones viven en el backend.
+  </div>
+
+  <!-- GLOSARIO -->
+  <h3>📖 Página: Glosario (<code>/glosario</code>)</h3>
+  <table>
+    <tr><th>Funcionalidad</th><th>Método</th><th>Endpoint</th><th>Reemplaza (SQL antiguo)</th></tr>
+    <tr><td>Listar términos con filtros y paginación</td><td><span class="badge badge-get">GET</span></td><td><code>/glosario/terminos?buscar=X&tipo=Y&dominio=Z&page=1</code></td><td><code>POST /query → T_terminos WHERE</code> dinámico</td></tr>
+    <tr><td>Términos recientes (últimas modificaciones)</td><td><span class="badge badge-get">GET</span></td><td><code>/glosario/terminos/recientes?limit=10</code></td><td><code>POST /query ORDER BY fecha DESC</code></td></tr>
+    <tr><td>Crosslinks para hipervínculos automáticos</td><td><span class="badge badge-get">GET</span></td><td><code>/glosario/terminos/crosslinks</code></td><td><code>POST /query id,nombre,tipo</code></td></tr>
+    <tr><td>Verificar nombre duplicado (on-blur del form)</td><td><span class="badge badge-get">GET</span></td><td><code>/glosario/terminos/buscar-duplicado?nombre=X&tipo=Y</code></td><td><code>POST /query WHERE nombre='X'</code></td></tr>
+    <tr><td>Detalle de un término</td><td><span class="badge badge-get">GET</span></td><td><code>/glosario/terminos/{id}</code></td><td><code>POST /query WHERE id=X</code></td></tr>
+    <tr><td>Crear término nuevo <span class="pill pill-oga">Solo OGA</span></td><td><span class="badge badge-post">POST</span></td><td><code>/glosario/terminos</code></td><td><code>POST /insert → T_terminos</code></td></tr>
+    <tr><td>Editar término <span class="pill pill-oga">Solo OGA</span></td><td><span class="badge badge-put">PUT</span></td><td><code>/glosario/terminos/{id}</code></td><td><code>PUT /update → T_terminos</code></td></tr>
+    <tr><td>Eliminar término (soft delete) <span class="pill pill-oga">Solo OGA</span></td><td><span class="badge badge-del">DELETE</span></td><td><code>/glosario/terminos/{id}</code></td><td><code>PUT /update SET sn_activo=0</code></td></tr>
+    <tr><td>Ver casos de uso asociados al término</td><td><span class="badge badge-get">GET</span></td><td><code>/glosario/terminos/{id}/casos-uso</code></td><td><code>POST /query → T_CASOS_USO_TERMINOS_MB</code></td></tr>
+    <tr><td>Sincronizar casos de uso del término <span class="pill pill-oga">Solo OGA</span></td><td><span class="badge badge-put">PUT</span></td><td><code>/glosario/terminos/{id}/casos-uso</code></td><td>3 llamadas: query + insert + update</td></tr>
+    <tr><td>Conteo de términos por dominio (sidebar filtro)</td><td><span class="badge badge-get">GET</span></td><td><code>/glosario/dominios-mapa</code></td><td><code>POST /query GROUP BY dominio</code></td></tr>
+  </table>
+
+  <!-- LIBRO DE DOMINIOS -->
+  <h3>🗂️ Página: Libro de Dominios (<code>/libro-dominios</code>)</h3>
+  <table>
+    <tr><th>Funcionalidad</th><th>Método</th><th>Endpoint</th><th>Reemplaza</th></tr>
+    <tr><td>Listar todos los dominios activos</td><td><span class="badge badge-get">GET</span></td><td><code>/dominios?activos_only=true</code></td><td><code>POST /query → t_mapa_dominios</code></td></tr>
+    <tr><td>Crear dominio nuevo <span class="pill pill-oga">Solo OGA</span></td><td><span class="badge badge-post">POST</span></td><td><code>/dominios</code></td><td><code>POST /insert → t_mapa_dominios</code></td></tr>
+  </table>
+
+  <!-- FICHA DOMINIO -->
+  <h3>📋 Página: Ficha Dominio (<code>/ficha-dominio/:id</code>)</h3>
+  <table>
+    <tr><th>Funcionalidad</th><th>Método</th><th>Endpoint</th><th>Reemplaza</th></tr>
+    <tr><td>Datos del dominio</td><td><span class="badge badge-get">GET</span></td><td><code>/dominios/{id}</code></td><td><code>POST /query t_mapa_dominios WHERE id</code></td></tr>
+    <tr><td>Estadísticas del dominio (6 conteos en paralelo)</td><td><span class="badge badge-get">GET</span></td><td><code>/dominios/{id}/estadisticas</code></td><td>6× <code>POST /query</code> separadas</td></tr>
+    <tr><td>Tablas oficiales del dominio</td><td><span class="badge badge-get">GET</span></td><td><code>/dominios/{id}/tablas-oficiales</code></td><td><code>POST /query t_tablas_oficiales</code></td></tr>
+    <tr><td>Términos/atributos del dominio</td><td><span class="badge badge-get">GET</span></td><td><code>/dominios/{id}/terminos?tipo=TERMINO</code></td><td><code>POST /query T_terminos LOCATE(dominio)</code></td></tr>
+    <tr><td>Checklist de avances</td><td><span class="badge badge-get">GET</span></td><td><code>/dominios/{id}/avances</code></td><td><code>POST /query t_avances_dominio</code></td></tr>
+    <tr><td>Marcar/desmarcar ítem de avance <span class="pill pill-oga">Solo OGA</span></td><td><span class="badge badge-put">PUT</span></td><td><code>/dominios/{id}/avances/{item_id}</code></td><td><code>PUT /update t_avances_dominio</code></td></tr>
+    <tr><td>Editar dominio <span class="pill pill-oga">Solo OGA</span></td><td><span class="badge badge-put">PUT</span></td><td><code>/dominios/{id}</code></td><td><code>PUT /update t_mapa_dominios</code></td></tr>
+  </table>
+  <p style="font-size:12px;color:var(--text3);">La página <code>/dominio-terminos/:id/:tipo</code> usa <code>GET /dominios/{id}/terminos?tipo=ATRIBUTO</code></p>
+
+  <!-- EXPLORADOR DE METADATOS -->
+  <h3>🔍 Página: Explorador de Metadatos (<code>/explorador-metadatos</code>)</h3>
+  <div class="alert alert-warn">
+    <strong>⚠️ Lógica OGA/No-OGA en PUT /metadatos/tablas/{id}:</strong><br>
+    • <strong>OGA:</strong> aplica el cambio directo en <code>t_tablas_oficiales</code><br>
+    • <strong>No-OGA:</strong> crea solicitudes PENDIENTES en <code>t_aprobaciones</code> (una por campo modificado)<br>
+    El frontend llama el mismo endpoint — el backend decide internamente según <code>is_oga</code>.
+  </div>
+  <table>
+    <tr><th>Funcionalidad</th><th>Método</th><th>Endpoint</th><th>Reemplaza</th></tr>
+    <tr><td>Opciones para dropdowns (servidores, plataformas, clasificaciones)</td><td><span class="badge badge-get">GET</span></td><td><code>/metadatos/filtros</code></td><td><code>POST /query DISTINCT</code> múltiples</td></tr>
+    <tr><td>Listado de tablas paginado con filtros</td><td><span class="badge badge-get">GET</span></td><td><code>/metadatos/tablas?servidor=X&clasificacion=Y</code></td><td><code>POST /query t_tablas_oficiales</code> JOINs</td></tr>
+    <tr><td>Detalle completo de tabla</td><td><span class="badge badge-get">GET</span></td><td><code>/metadatos/tablas/{id}</code></td><td><code>POST /query WHERE id=X</code></td></tr>
+    <tr><td>Editar tabla (OGA: directo; no-OGA: genera aprobación) <span class="pill pill-any">Auth</span></td><td><span class="badge badge-put">PUT</span></td><td><code>/metadatos/tablas/{id}</code></td><td><code>PUT /update</code> O <code>POST /insert t_aprobaciones</code></td></tr>
+    <tr><td>Sugerencias de documentación por prefijo de campo</td><td><span class="badge badge-get">GET</span></td><td><code>/metadatos/tablas/{id}/recomendaciones</code></td><td>(funcionalidad nueva)</td></tr>
+    <tr><td>Listado de campos/atributos con filtros</td><td><span class="badge badge-get">GET</span></td><td><code>/metadatos/campos?tabla_id=X&buscar=Y</code></td><td><code>POST /query vw_atributos_larga_pr</code></td></tr>
+    <tr><td>Documentar campo (detalle + descripción) <span class="pill pill-oga">Solo OGA</span></td><td><span class="badge badge-put">PUT</span></td><td><code>/metadatos/campos/{tabla_id}/{campo_nombre}</code></td><td><code>PUT /update t_atributos_inf_tecnica_larga</code></td></tr>
+    <tr><td>Árbol jerárquico servidor→base→esquema→tablas</td><td><span class="badge badge-get">GET</span></td><td><code>/metadatos/arbol</code></td><td><code>POST /query</code> con múltiples JOINs (caché 15min)</td></tr>
+    <tr><td>Invalidar caché del árbol <span class="pill pill-oga">Solo OGA</span></td><td><span class="badge badge-del">DELETE</span></td><td><code>/metadatos/arbol/cache</code></td><td>(funcionalidad nueva)</td></tr>
+    <tr><td>Autocompletado emails data owner/steward</td><td><span class="badge badge-get">GET</span></td><td><code>/metadatos/owners-facets?tipo=owner</code></td><td><code>POST /query DISTINCT data_owner</code></td></tr>
+    <tr><td>Selector de empleados (nombre del owner)</td><td><span class="badge badge-get">GET</span></td><td><code>/metadatos/empleados</code></td><td><code>POST /query tmp_datos_empleados</code></td></tr>
+  </table>
+
+  <!-- APROBACIONES -->
+  <h3>✅ Página: Aprobaciones (<code>/aprobaciones</code>)</h3>
+  <div class="alert alert-info">
+    <strong>Tipos de cambio:</strong> 1=Data Owner · 2=Data Steward · 3=Clasificación · 4=Dominios · 5=Descripción tabla · 9=Etiqueta/Medallón
+  </div>
+  <table>
+    <tr><th>Funcionalidad</th><th>Método</th><th>Endpoint</th><th>Reemplaza</th></tr>
+    <tr><td>Listar aprobaciones (con filtro de estado)</td><td><span class="badge badge-get">GET</span></td><td><code>/aprobaciones?estado=PENDIENTE&page=1</code></td><td><code>POST /query t_aprobaciones</code></td></tr>
+    <tr><td>Detalle de una aprobación</td><td><span class="badge badge-get">GET</span></td><td><code>/aprobaciones/{id}</code></td><td><code>POST /query WHERE id=X</code></td></tr>
+    <tr><td>Crear solicitud manualmente <span class="pill pill-any">Auth</span></td><td><span class="badge badge-post">POST</span></td><td><code>/aprobaciones</code></td><td><code>POST /insert t_aprobaciones</code></td></tr>
+    <tr><td>Aprobar + ejecutar cambio en BD <span class="pill pill-oga">Solo OGA</span></td><td><span class="badge badge-post">POST</span></td><td><code>/aprobaciones/{id}/aprobar</code></td><td><code>PUT /update t_aprobaciones + tabla afectada</code></td></tr>
+    <tr><td>Rechazar solicitud <span class="pill pill-oga">Solo OGA</span></td><td><span class="badge badge-post">POST</span></td><td><code>/aprobaciones/{id}/rechazar</code></td><td><code>PUT /update t_aprobaciones RECHAZADO</code></td></tr>
+  </table>
+
+  <!-- CASOS DE USO -->
+  <h3>📊 Página: Casos de Uso (<code>/casos-de-uso/:id</code>)</h3>
+  <table>
+    <tr><th>Funcionalidad</th><th>Método</th><th>Endpoint</th><th>Reemplaza</th></tr>
+    <tr><td>Listar casos con filtros</td><td><span class="badge badge-get">GET</span></td><td><code>/casos-uso?id_dominio=X&estado=A&page=1</code></td><td><code>POST /query t_casos_uso_analitica</code></td></tr>
+    <tr><td>Subdominios para dropdown filtro</td><td><span class="badge badge-get">GET</span></td><td><code>/casos-uso/subdominios?id_dominio=X</code></td><td><code>POST /query t_subdominios</code></td></tr>
+    <tr><td>Contadores activos/terminados/total</td><td><span class="badge badge-get">GET</span></td><td><code>/casos-uso/contadores-estado?id_dominio=X</code></td><td><code>POST /query COUNT(*)</code></td></tr>
+    <tr><td>Detalle de caso de uso</td><td><span class="badge badge-get">GET</span></td><td><code>/casos-uso/{id}</code></td><td><code>POST /query WHERE id=X</code></td></tr>
+    <tr><td>Crear caso de uso <span class="pill pill-oga">Solo OGA</span></td><td><span class="badge badge-post">POST</span></td><td><code>/casos-uso</code></td><td><code>POST /insert t_casos_uso_analitica</code></td></tr>
+    <tr><td>Editar caso de uso <span class="pill pill-oga">Solo OGA</span></td><td><span class="badge badge-put">PUT</span></td><td><code>/casos-uso/{id}</code></td><td><code>PUT /update t_casos_uso_analitica</code></td></tr>
+    <tr><td>Eliminar caso (soft delete) <span class="pill pill-oga">Solo OGA</span></td><td><span class="badge badge-del">DELETE</span></td><td><code>/casos-uso/{id}</code></td><td><code>PUT /update SET sn_activo=0</code></td></tr>
+    <tr><td>Fuentes de datos del caso</td><td><span class="badge badge-get">GET</span></td><td><code>/casos-uso/{id}/fuentes</code></td><td><code>POST /query T_CASOS_USO_FUENTES</code></td></tr>
+    <tr><td>Agregar fuente de datos <span class="pill pill-oga">Solo OGA</span></td><td><span class="badge badge-post">POST</span></td><td><code>/casos-uso/{id}/fuentes</code></td><td><code>POST /insert T_CASOS_USO_FUENTES</code></td></tr>
+    <tr><td>Eliminar fuente de datos <span class="pill pill-oga">Solo OGA</span></td><td><span class="badge badge-del">DELETE</span></td><td><code>/casos-uso/{id}/fuentes/{fuente_id}</code></td><td><code>PUT /update T_CASOS_USO_FUENTES sn_activo=0</code></td></tr>
+    <tr><td>Términos relacionados con el caso</td><td><span class="badge badge-get">GET</span></td><td><code>/casos-uso/{id}/terminos</code></td><td><code>POST /query T_CASOS_USO_TERMINOS_MB</code></td></tr>
+  </table>
+
+  <!-- CAMPAÑAS -->
+  <h3>📣 Página: Administración de Campañas (<code>/administracion-campanias</code>)</h3>
+  <table>
+    <tr><th>Funcionalidad</th><th>Método</th><th>Endpoint</th><th>Reemplaza</th></tr>
+    <tr><td>Listar clasificaciones con conteos A/T</td><td><span class="badge badge-get">GET</span></td><td><code>/campanias/clasificaciones</code></td><td><code>POST /query t_campanias_clasificacion</code></td></tr>
+    <tr><td>Crear clasificación <span class="pill pill-oga">Solo OGA</span></td><td><span class="badge badge-post">POST</span></td><td><code>/campanias/clasificaciones</code></td><td><code>POST /insert t_campanias_clasificacion</code></td></tr>
+    <tr><td>Seguimiento de iniciativas agrupadas</td><td><span class="badge badge-get">GET</span></td><td><code>/campanias/seguimiento?clasificacion_id=X</code></td><td><code>POST /query t_campanias_seguimiento</code></td></tr>
+    <tr><td>Estadísticas globales de campañas</td><td><span class="badge badge-get">GET</span></td><td><code>/campanias/estadisticas</code></td><td><code>POST /query COUNT(*)</code></td></tr>
+  </table>
+
+  <!-- TRANSVERSALES -->
+  <h3>🌐 Todas las Páginas — Autenticación y Tracking</h3>
+  <table>
+    <tr><th>Funcionalidad</th><th>Método</th><th>Endpoint</th><th>Reemplaza</th></tr>
+    <tr><td>Perfil del usuario + permisos al cargar la app</td><td><span class="badge badge-get">GET</span></td><td><code>/auth/me</code></td><td>Emails hardcodeados en <code>UserContext.jsx</code></td></tr>
+    <tr><td>Health check del backend y MySQL</td><td><span class="badge badge-get">GET</span></td><td><code>/auth/health</code></td><td>(nuevo — sin autenticación)</td></tr>
+    <tr><td>Registrar visita al navegar <span class="pill pill-any">Auth</span></td><td><span class="badge badge-post">POST</span></td><td><code>/analytics/visitas</code></td><td><code>useRegistrarVisita.js → POST /insert T_visitas_oga_new</code></td></tr>
+    <tr><td>Resumen de visitas por página <span class="pill pill-oga">Solo OGA</span></td><td><span class="badge badge-get">GET</span></td><td><code>/analytics/visitas/resumen</code></td><td><code>POST /query GROUP BY DESC_PAGINA</code></td></tr>
+  </table>
+
+  <div class="alert alert-info" style="margin-top:24px;">
+    <strong>Total de endpoints requeridos: 42</strong><br>
+    Todos están implementados en <code>BackendOgaSuite/app/</code> y documentados en Swagger: <code>GET /docs</code>
+  </div>
+</section>
+
 <!-- ═══════════════════════════════════════════════════════ MÓDULOS COMPLETOS -->
 <section id="mod-auth">
   <h2>Módulo Autenticación — Conexión completa</h2>
@@ -1442,7 +1571,7 @@
 
 <section id="db-migracion">
   <h2>Migración SQL — Tablas nuevas</h2>
-  <p>Archivo: <code>migrations/001_initial_oga_tables.sql</code> — ejecutar una sola vez en MySQL.</p>
+  <p>Archivo: <code>migrations/NewTables.sql</code> — <strong>ya ejecutado</strong> en MySQL (<code>BG_OGASUITE</code>). Crea 4 tablas nuevas.</p>
 
   <div class="card">
     <h3>t_oga_usuarios</h3>
@@ -1493,6 +1622,23 @@
       <tr><td>version_api</td><td>1.0.0</td><td>string</td></tr>
     </table>
   </div>
+
+  <div class="card">
+    <h3>T_VISITAS_OGA_NEW</h3>
+    <p>Log de navegación de usuarios en OGA Suite. Reemplaza el hook <code>useRegistrarVisita.js</code> del frontend — ahora se inserta vía <code>POST /analytics/visitas</code>, no con SQL directo.</p>
+    <table>
+      <tr><th>Columna</th><th>Tipo</th><th>Descripción</th></tr>
+      <tr><td>id</td><td class="type">INT AUTO_INCREMENT PK</td><td></td></tr>
+      <tr><td>USUARIO</td><td class="type">VARCHAR(100)</td><td>Username del empleado (ej: jgutierrez)</td></tr>
+      <tr><td>CODIGO_EMPLEADO</td><td class="type">VARCHAR(20)</td><td>Código numérico del empleado</td></tr>
+      <tr><td>DESC_PAGINA</td><td class="type">VARCHAR(500)</td><td>Nombre de la página visitada (ej: GLOSARIO)</td></tr>
+      <tr><td>SUB_PAGINA</td><td class="type">VARCHAR(500)</td><td>Sub-ruta o parámetro (ej: termino/42)</td></tr>
+      <tr><td>CENTRO_COSTO</td><td class="type">VARCHAR(200)</td><td>Centro de costo del empleado</td></tr>
+      <tr><td>DEPARTAMENTO</td><td class="type">VARCHAR(200)</td><td>Departamento del empleado</td></tr>
+      <tr><td>FECHA</td><td class="type">DATETIME(3) DEFAULT NOW(3)</td><td>Timestamp con precisión de milisegundos</td></tr>
+    </table>
+    <p>2 índices: <code>IX_visitas_usuario</code> (USUARIO, FECHA) y <code>IX_visitas_pagina</code> (DESC_PAGINA, FECHA).</p>
+  </div>
 </section>
 
 <section>
@@ -1503,8 +1649,8 @@
 # 1. Instalar dependencias
 pip install -r requirements.txt
 
-# 2. Ejecutar migración SQL en MySQL (una sola vez)
-mysql -h 172.26.61.35 -P 3323 -u apl_ogasuite -p BG_OGASUITE < migrations/001_initial_oga_tables.sql
+# 2. Ejecutar migración SQL en MySQL (ya ejecutado — NewTables.sql)
+mysql -h 172.26.61.35 -P 3323 -u apl_ogasuite -p BG_OGASUITE < migrations/NewTables.sql
 
 # 3. Verificar .env con credenciales reales
 cat .env

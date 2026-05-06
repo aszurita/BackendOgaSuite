@@ -4,17 +4,27 @@ from datetime import datetime
 
 class DominioBase(BaseModel):
     codigo_dominio: str | None = None
+    cod_dominio: str | None = None
     descripcion_dominio: str | None = None
-    tipo_base_datos: str | None = None
-    descripcion_tipo: str | None = None
-    responsable: str | None = None
-    objetivo: str | None = None
-    alcance: str | None = None
-    estado: str | None = None
+    nombre_dominio: str | None = None
+    concepto_clave: str | None = None
+    descripcion: str | None = None
+    com: float | None = None
+    impact: float | None = None
+    tipo: str | None = None
+    tipo_dominio: str | None = None
+    familia: str | None = None
+    lider_sugerido: str | None = None
+    atributos_basicos: str | None = None
+    id_tipo_dominio: int | None = None
+    id_tipo_familia: int | None = None
+    porcentaje_avance: float | None = None
+    codificacion: str | None = None
+    concepto: str | None = None
 
 
 class DominioCreate(DominioBase):
-    descripcion_dominio: str = Field(..., min_length=1, max_length=300)
+    descripcion_dominio: str = Field(..., min_length=1, max_length=100)
 
 
 class DominioUpdate(DominioBase):
@@ -24,8 +34,6 @@ class DominioUpdate(DominioBase):
 class Dominio(DominioBase):
     id_dominio: int
     sn_activo: bool = True
-    fecha_creacion: datetime | None = None
-    fecha_modificacion: datetime | None = None
 
     model_config = {"from_attributes": True}
 

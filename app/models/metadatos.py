@@ -4,6 +4,9 @@ from datetime import datetime
 
 class TablaOficial(BaseModel):
     id: int
+    id_fuente_aprovisionamiento: int | None = None
+    txt_desc_tabla: str | None = None
+    fuente: str | None = None
     plataforma: str | None = None
     servidor: str | None = None
     base: str | None = None
@@ -18,6 +21,8 @@ class TablaOficial(BaseModel):
     clasificacion: str | None = None
     etiquetas: str | None = None
     dominios: str | None = None
+    avance: float | None = None
+    fecha_registro: datetime | None = None
     fecha_modificacion_do: datetime | None = None
     fecha_modificacion_ds: datetime | None = None
     sn_activo: bool = True

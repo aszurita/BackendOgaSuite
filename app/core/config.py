@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     SQL_PASSWORD: str = ""
     SQL_POOL_SIZE: int = 10
     SQL_POOL_TIMEOUT: int = 30
+    SQL_CONNECT_TIMEOUT: int = 5
     SQL_CHARSET: str = "utf8mb4"
 
     # Azure Entra ID

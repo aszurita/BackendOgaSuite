@@ -1,6 +1,4 @@
 import logging
-import asyncio
-from concurrent.futures import ThreadPoolExecutor
 from app.models.dominios import (
     Dominio, DominioCreate, DominioUpdate, DominioStats,
     AvanceDominio, AvanceUpdate,
@@ -15,15 +13,23 @@ def _row_to_dominio(row: dict) -> Dominio:
         id_dominio=row.get("id_dominio") or 0,
         codigo_dominio=row.get("codigo_dominio"),
         descripcion_dominio=row.get("descripcion_dominio"),
-        tipo_base_datos=row.get("tipo_base_datos"),
-        descripcion_tipo=row.get("descripcion_tipo"),
-        responsable=row.get("responsable"),
-        objetivo=row.get("objetivo"),
-        alcance=row.get("alcance"),
-        estado=row.get("estado"),
+        nombre_dominio=row.get("descripcion_dominio"),
+        concepto_clave=row.get("concepto_clave"),
+        descripcion=row.get("descripcion"),
+        com=row.get("com"),
+        impact=row.get("impact"),
+        tipo=row.get("tipo"),
+        tipo_dominio=row.get("tipo"),
+        familia=row.get("familia"),
+        lider_sugerido=row.get("lider_sugerido"),
+        atributos_basicos=row.get("atributos_basicos"),
+        id_tipo_dominio=row.get("id_tipo_dominio"),
+        id_tipo_familia=row.get("id_tipo_familia"),
+        porcentaje_avance=row.get("porcentaje_avance"),
+        codificacion=row.get("codigo_dominio"),
+        cod_dominio=row.get("codigo_dominio"),
+        concepto=row.get("descripcion"),
         sn_activo=bool(row.get("sn_activo", True)),
-        fecha_creacion=row.get("fecha_creacion"),
-        fecha_modificacion=row.get("fecha_modificacion"),
     )
 
 
@@ -32,9 +38,12 @@ def get_dominios(conn, activos_only: bool = True) -> list[Dominio]:
     with conn.cursor() as cursor:
         cursor.execute(
             f"""
-            SELECT id_dominio, codigo_dominio, descripcion_dominio, tipo_base_datos,
-                   descripcion_tipo, responsable, objetivo, alcance, estado,
-                   sn_activo, fecha_creacion, fecha_modificacion
+            SELECT id_dominio, codigo_Dominio AS codigo_dominio, descripcion_dominio,
+                   Conceptos_Clave AS concepto_clave, descripcion,
+                   COM AS com, IMPACT AS impact, Tipo AS tipo,
+                   Familia_de_Dominios AS familia, lider_sugerido,
+                   atributos_basicos, id_tipo_dominio, id_tipo_familia,
+                   PORC_AVANCE AS porcentaje_avance, sn_activo
             FROM t_mapa_dominios {where}
             ORDER BY descripcion_dominio
             """
@@ -46,9 +55,12 @@ def get_dominio_by_id(conn, dominio_id: int) -> Dominio:
     with conn.cursor() as cursor:
         cursor.execute(
             """
-            SELECT id_dominio, codigo_dominio, descripcion_dominio, tipo_base_datos,
-                   descripcion_tipo, responsable, objetivo, alcance, estado,
-                   sn_activo, fecha_creacion, fecha_modificacion
+            SELECT id_dominio, codigo_Dominio AS codigo_dominio, descripcion_dominio,
+                   Conceptos_Clave AS concepto_clave, descripcion,
+                   COM AS com, IMPACT AS impact, Tipo AS tipo,
+                   Familia_de_Dominios AS familia, lider_sugerido,
+                   atributos_basicos, id_tipo_dominio, id_tipo_familia,
+                   PORC_AVANCE AS porcentaje_avance, sn_activo
             FROM t_mapa_dominios WHERE id_dominio = %s
             """,
             [dominio_id],
@@ -101,11 +113,18 @@ def _count_estructura(conn, dominio_id: int) -> int:
         return cursor.fetchone()["total"]
 
 
-def _count_tablas(conn, nombre_dominio: str) -> int:
+def _count_tablas_by_dominio_id(conn, dominio_id: int) -> int:
     with conn.cursor() as cursor:
         cursor.execute(
-            "SELECT COUNT(DISTINCT clave_fuente) AS total FROM t_tablas_oficiales WHERE LOCATE(%s, IFNULL(dominios,'')) > 0 AND sn_activo=1",
-            [nombre_dominio],
+            """
+            SELECT COUNT(DISTINCT CONCAT(d.id_fuente_aprovisionamiento, '|', d.txt_desc_tabla)) AS total
+            FROM t_dominios_tablas_oficiales d
+            JOIN t_fuente_aprovisionamiento f
+              ON f.id_fuente_aprovisionamiento = d.id_fuente_aprovisionamiento
+            WHERE d.id_dominio_asociado = %s
+              AND f.sn_activo = 1
+            """,
+            [dominio_id],
         )
         return cursor.fetchone()["total"]
 
@@ -113,7 +132,12 @@ def _count_tablas(conn, nombre_dominio: str) -> int:
 def _count_avances(conn, dominio_id: int) -> tuple[int, int]:
     with conn.cursor() as cursor:
         cursor.execute(
-            "SELECT COUNT(1) AS total, SUM(CASE WHEN completado=1 THEN 1 ELSE 0 END) AS completados FROM t_avances_dominio WHERE id_dominio=%s",
+            """
+            SELECT COUNT(1) AS total,
+                   SUM(CASE WHEN estado_paso IN ('Completado', 'No aplica') THEN 1 ELSE 0 END) AS completados
+            FROM t_avances_dominio
+            WHERE id_dominio=%s
+            """,
             [dominio_id],
         )
         row = cursor.fetchone()
@@ -124,19 +148,18 @@ async def get_estadisticas(conn, dominio_id: int) -> DominioStats:
     dominio = get_dominio_by_id(conn, dominio_id)
     nombre = dominio.descripcion_dominio or ""
 
-    loop = asyncio.get_event_loop()
-    with ThreadPoolExecutor(max_workers=6) as executor:
-        fut_c  = loop.run_in_executor(executor, _count_casos,       conn, dominio_id)
-        fut_t  = loop.run_in_executor(executor, _count_terminos,    conn, nombre)
-        fut_a  = loop.run_in_executor(executor, _count_artefactos,  conn, dominio_id)
-        fut_e  = loop.run_in_executor(executor, _count_estructura,  conn, dominio_id)
-        fut_tb = loop.run_in_executor(executor, _count_tablas,      conn, nombre)
-        fut_av = loop.run_in_executor(executor, _count_avances,     conn, dominio_id)
+    casos = _count_casos(conn, dominio_id)
+    terminos, atributos = _count_terminos(conn, nombre)
+    artefactos = _count_artefactos(conn, dominio_id)
+    estructura = _count_estructura(conn, dominio_id)
+    tablas = _count_tablas_by_dominio_id(conn, dominio_id)
+    av_total, av_comp = _count_avances(conn, dominio_id)
 
-        casos, (terminos, atributos), artefactos, estructura, tablas, (av_total, av_comp) = \
-            await asyncio.gather(fut_c, fut_t, fut_a, fut_e, fut_tb, fut_av)
-
-    porc = round(av_comp / av_total * 100, 1) if av_total > 0 else 0.0
+    if dominio.porcentaje_avance is not None:
+        avance = float(dominio.porcentaje_avance)
+        porc = round(avance * 100, 1) if avance <= 1 else round(avance, 1)
+    else:
+        porc = round(av_comp / av_total * 100, 1) if av_total > 0 else 0.0
     return DominioStats(
         cant_casos=casos, cant_terminos=terminos, cant_atributos=atributos,
         cant_artefactos=artefactos, cant_tablas=tablas, cant_estructura=estructura,
@@ -145,18 +168,41 @@ async def get_estadisticas(conn, dominio_id: int) -> DominioStats:
 
 
 def get_tablas_oficiales(conn, dominio_id: int) -> list[dict]:
-    dominio = get_dominio_by_id(conn, dominio_id)
-    nombre = dominio.descripcion_dominio or ""
+    get_dominio_by_id(conn, dominio_id)
     with conn.cursor() as cursor:
         cursor.execute(
             """
-            SELECT id, plataforma, servidor, `base`, esquema, tabla,
-                   descripcion_tabla, data_owner, nombre_data_owner
-            FROM t_tablas_oficiales
-            WHERE LOCATE(%s, IFNULL(dominios,'')) > 0 AND sn_activo=1
-            ORDER BY tabla
+            SELECT DISTINCT
+                t.id_fuente_aprovisionamiento AS id,
+                t.id_fuente_aprovisionamiento,
+                t.txt_desc_tabla,
+                t.txt_desc_tabla AS tabla,
+                NULL AS plataforma,
+                f.txt_servidor AS servidor,
+                f.txt_host AS `base`,
+                f.txt_fuente_esquema AS esquema,
+                f.txt_fuente_aprovisionamiento AS fuente,
+                t.descripcion_tabla,
+                t.descripcion_tabla AS descripcion,
+                t.data_owner,
+                t.nombre_data_owner,
+                t.data_steward,
+                t.nombre_data_steward,
+                t.id_clasificacion,
+                t.etiquetas,
+                t.avance,
+                d.id_dominio_asociado AS id_dominio
+            FROM t_tablas_oficiales t
+            JOIN t_dominios_tablas_oficiales d
+              ON d.id_fuente_aprovisionamiento = t.id_fuente_aprovisionamiento
+             AND d.txt_desc_tabla = t.txt_desc_tabla
+            JOIN t_fuente_aprovisionamiento f
+              ON f.id_fuente_aprovisionamiento = t.id_fuente_aprovisionamiento
+            WHERE d.id_dominio_asociado = %s
+              AND f.sn_activo = 1
+            ORDER BY f.txt_servidor, f.txt_host, f.txt_fuente_esquema, t.txt_desc_tabla
             """,
-            [nombre],
+            [dominio_id],
         )
         return list(cursor.fetchall())
 
@@ -186,16 +232,19 @@ def get_terminos_por_dominio(conn, dominio_id: int, tipo: str | None) -> list[di
 def get_avances(conn, dominio_id: int) -> list[AvanceDominio]:
     with conn.cursor() as cursor:
         cursor.execute(
-            "SELECT id_avance, descripcion, completado, fecha_completado, responsable FROM t_avances_dominio WHERE id_dominio=%s ORDER BY id_avance",
+            """
+            SELECT id_paso AS id_avance, txt_desc_paso AS descripcion, estado_paso
+            FROM t_avances_dominio
+            WHERE id_dominio=%s
+            ORDER BY id_paso
+            """,
             [dominio_id],
         )
         return [
             AvanceDominio(
                 id_avance=r["id_avance"],
                 descripcion=r.get("descripcion"),
-                completado=bool(r.get("completado")),
-                fecha_completado=r.get("fecha_completado"),
-                responsable=r.get("responsable"),
+                completado=r.get("estado_paso") in ("Completado", "No aplica"),
             )
             for r in cursor.fetchall()
         ]
@@ -205,12 +254,20 @@ def actualizar_avance(conn, dominio_id: int, item_id: int, data: AvanceUpdate) -
     with conn.cursor() as cursor:
         if data.completado:
             cursor.execute(
-                "UPDATE t_avances_dominio SET completado=1, fecha_completado=NOW() WHERE id_avance=%s AND id_dominio=%s",
+                """
+                UPDATE t_avances_dominio
+                SET estado_paso='Completado', porcentaje_avance_orig=1
+                WHERE id_paso=%s AND id_dominio=%s
+                """,
                 [item_id, dominio_id],
             )
         else:
             cursor.execute(
-                "UPDATE t_avances_dominio SET completado=0, fecha_completado=NULL WHERE id_avance=%s AND id_dominio=%s",
+                """
+                UPDATE t_avances_dominio
+                SET estado_paso='En proceso', porcentaje_avance_orig=0
+                WHERE id_paso=%s AND id_dominio=%s
+                """,
                 [item_id, dominio_id],
             )
     avances = get_avances(conn, dominio_id)
@@ -225,12 +282,26 @@ def crear_dominio(conn, data: DominioCreate) -> Dominio:
         cursor.execute(
             """
             INSERT INTO t_mapa_dominios
-                (codigo_dominio, descripcion_dominio, tipo_base_datos, descripcion_tipo,
-                 responsable, objetivo, alcance, estado, sn_activo, fecha_creacion)
-            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,1,NOW())
+                (codigo_Dominio, descripcion_dominio, Conceptos_Clave, descripcion,
+                 COM, IMPACT, Tipo, Familia_de_Dominios, lider_sugerido,
+                 atributos_basicos, id_tipo_dominio, id_tipo_familia, sn_activo, PORC_AVANCE)
+            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,1,%s)
             """,
-            [data.codigo_dominio, data.descripcion_dominio, data.tipo_base_datos,
-             data.descripcion_tipo, data.responsable, data.objetivo, data.alcance, data.estado],
+            [
+                data.codigo_dominio or data.cod_dominio or data.codificacion or "",
+                data.descripcion_dominio,
+                data.concepto_clave or data.concepto,
+                data.descripcion,
+                data.com if data.com is not None else 0,
+                data.impact if data.impact is not None else 0,
+                data.tipo or data.tipo_dominio or "",
+                data.familia or "",
+                data.lider_sugerido,
+                data.atributos_basicos,
+                data.id_tipo_dominio,
+                data.id_tipo_familia,
+                data.porcentaje_avance if data.porcentaje_avance is not None else 0,
+            ],
         )
         new_id = cursor.lastrowid
     return get_dominio_by_id(conn, new_id)
@@ -239,19 +310,26 @@ def crear_dominio(conn, data: DominioCreate) -> Dominio:
 def actualizar_dominio(conn, dominio_id: int, data: DominioUpdate) -> Dominio:
     get_dominio_by_id(conn, dominio_id)
     updates, params = [], []
+    updated_cols = set()
     for field, col in [
-        ("codigo_dominio", "codigo_dominio"), ("descripcion_dominio", "descripcion_dominio"),
-        ("tipo_base_datos", "tipo_base_datos"), ("descripcion_tipo", "descripcion_tipo"),
-        ("responsable", "responsable"), ("objetivo", "objetivo"),
-        ("alcance", "alcance"), ("estado", "estado"),
+        ("codigo_dominio", "codigo_Dominio"), ("cod_dominio", "codigo_Dominio"),
+        ("codificacion", "codigo_Dominio"),
+        ("descripcion_dominio", "descripcion_dominio"), ("nombre_dominio", "descripcion_dominio"),
+        ("concepto_clave", "Conceptos_Clave"), ("concepto", "descripcion"),
+        ("descripcion", "descripcion"), ("com", "COM"), ("impact", "IMPACT"),
+        ("tipo", "Tipo"), ("tipo_dominio", "Tipo"),
+        ("familia", "Familia_de_Dominios"), ("lider_sugerido", "lider_sugerido"),
+        ("atributos_basicos", "atributos_basicos"),
+        ("id_tipo_dominio", "id_tipo_dominio"), ("id_tipo_familia", "id_tipo_familia"),
+        ("porcentaje_avance", "PORC_AVANCE"),
     ]:
         val = getattr(data, field, None)
-        if val is not None:
+        if val is not None and col not in updated_cols:
             updates.append(f"{col} = %s")
             params.append(val)
+            updated_cols.add(col)
     if not updates:
         return get_dominio_by_id(conn, dominio_id)
-    updates.append("fecha_modificacion = NOW()")
     params.append(dominio_id)
     with conn.cursor() as cursor:
         cursor.execute(

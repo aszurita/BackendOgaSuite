@@ -227,49 +227,84 @@ def desactivar_termino(conn, termino_id: int, motivo: str | None,
 
 
 def get_casos_uso_del_termino(conn, termino_id: int) -> list[dict]:
+    get_termino_by_id(conn, termino_id)
     with conn.cursor() as cursor:
         cursor.execute(
             """
-            SELECT r.id_caso_uso, c.descripcion_caso_uso AS descripcion
+            SELECT
+                r.id_caso_uso,
+                c.descripcion_caso_uso AS descripcion,
+                c.detalle_caso_uso,
+                c.entregable_caso_uso,
+                c.id_dominio,
+                c.SUBDOMINIO AS subdominio,
+                c.estado_caso_uso AS estado,
+                c.tipo_iniciativa
             FROM t_casos_uso_terminos_mb r
             JOIN t_casos_uso_analitica c ON c.id_caso_uso = r.id_caso_uso
-            WHERE r.id_termino = %s AND r.SN_ACTIVO = 1 AND c.sn_activo = 1
+            WHERE r.cod_terminos = %s
+              AND r.sn_activo = 1
+              AND c.sn_activo = 1
+            ORDER BY c.descripcion_caso_uso
             """,
-            [termino_id],
+            [str(termino_id)],
         )
         return list(cursor.fetchall())
 
 
 def sync_casos_uso(conn, termino_id: int, casos_ids: list[int],
                    autor_codigo: int | None) -> None:
+    get_termino_by_id(conn, termino_id)
     with conn.cursor() as cursor:
         cursor.execute(
-            "SELECT id_caso_uso, SN_ACTIVO FROM t_casos_uso_terminos_mb WHERE id_termino = %s",
-            [termino_id],
+            """
+            SELECT id_caso_terminos, id_caso_uso, sn_activo
+            FROM t_casos_uso_terminos_mb
+            WHERE cod_terminos = %s
+            """,
+            [str(termino_id)],
         )
-        existentes = {r["id_caso_uso"]: bool(r["SN_ACTIVO"]) for r in cursor.fetchall()}
+        existentes = {
+            r["id_caso_uso"]: {
+                "id_caso_terminos": r["id_caso_terminos"],
+                "activo": bool(r["sn_activo"]),
+            }
+            for r in cursor.fetchall()
+        }
 
     seleccionados = set(casos_ids)
 
     with conn.cursor() as cursor:
         for caso_id in seleccionados:
             if caso_id in existentes:
-                if not existentes[caso_id]:
+                if not existentes[caso_id]["activo"]:
                     cursor.execute(
-                        "UPDATE t_casos_uso_terminos_mb SET SN_ACTIVO=1 WHERE id_termino=%s AND id_caso_uso=%s",
-                        [termino_id, caso_id],
+                        """
+                        UPDATE t_casos_uso_terminos_mb
+                        SET sn_activo=1, fec_modificacion=NOW(), usuario_modificacion=%s
+                        WHERE id_caso_terminos=%s
+                        """,
+                        [autor_codigo, existentes[caso_id]["id_caso_terminos"]],
                     )
             else:
                 cursor.execute(
-                    "INSERT INTO t_casos_uso_terminos_mb (id_termino, id_caso_uso, SN_ACTIVO) VALUES (%s,%s,1)",
-                    [termino_id, caso_id],
+                    """
+                    INSERT INTO t_casos_uso_terminos_mb
+                        (id_caso_uso, tipo_terminos, cod_terminos, sn_activo, fec_creacion, usuario_creacion)
+                    VALUES (%s,'T',%s,1,NOW(),%s)
+                    """,
+                    [caso_id, str(termino_id), autor_codigo],
                 )
 
-        for caso_id, activo in existentes.items():
-            if caso_id not in seleccionados and activo:
+        for caso_id, rel in existentes.items():
+            if caso_id not in seleccionados and rel["activo"]:
                 cursor.execute(
-                    "UPDATE t_casos_uso_terminos_mb SET SN_ACTIVO=0 WHERE id_termino=%s AND id_caso_uso=%s",
-                    [termino_id, caso_id],
+                    """
+                    UPDATE t_casos_uso_terminos_mb
+                    SET sn_activo=0, fec_modificacion=NOW(), usuario_modificacion=%s
+                    WHERE id_caso_terminos=%s
+                    """,
+                    [autor_codigo, rel["id_caso_terminos"]],
                 )
 
 
