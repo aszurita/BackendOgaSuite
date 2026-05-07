@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, Query
 
 from app.core.database import get_db
 from app.core.permissions import get_current_user, require_oga_user
-from app.core.cache import invalidar_arbol_cache
+from app.core.cache import invalidar_arbol_cache, invalidar_tablas_all_cache
 from app.models.auth import CurrentUser
 from app.models.metadatos import (
     TablaOficial, TablaUpdate, Campo, CampoUpdate,
@@ -40,6 +40,12 @@ async def listar_tablas(
         db, page, page_size, plataforma, servidor, base, esquema,
         clasificacion, tabla, owner_q, owner_type,
     )
+
+
+@router.get("/tablas/todas", response_model=list[TablaOficial])
+async def listar_todas_las_tablas(db=Depends(get_db)):
+    """Retorna todas las tablas sin paginación (desde caché). Usado por el frontend para caché client-side."""
+    return metadatos_service.get_all_tablas(db)
 
 
 @router.get("/tablas/{tabla_id}", response_model=TablaOficial)
@@ -123,9 +129,10 @@ async def get_arbol(db=Depends(get_db)):
 async def invalidar_cache(
     current_user: CurrentUser = Depends(require_oga_user),
 ):
-    """Invalida el cache del arbol de metadatos. Requiere permisos OGA."""
+    """Invalida el cache del arbol y de tablas. Requiere permisos OGA."""
     invalidar_arbol_cache()
-    return OkResponse(message="Cache del arbol invalidado")
+    invalidar_tablas_all_cache()
+    return OkResponse(message="Cache invalidado")
 
 
 @router.get("/owners-facets", response_model=list[str])

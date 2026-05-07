@@ -33,13 +33,18 @@ def _get_empleado_data(conn: pymysql.connections.Connection, username: str) -> d
         cursor.execute(
             """
             SELECT
-                CAST(CODIGO AS CHAR(50))       AS codigo,
-                IFNULL(NOMBRES, '')            AS nombres,
-                IFNULL(APELLIDOS, '')          AS apellidos,
-                IFNULL(CENTRO_COSTO, '')       AS centro_costo,
-                IFNULL(DEPARTAMENTO, '')       AS departamento,
-                IFNULL(CARGO, '')              AS cargo,
-                IFNULL(LOCALIDAD, '')          AS localidad
+                CAST(codigo AS CHAR(50))                            AS codigo,
+                IFNULL(nombres, '')                                 AS nombres,
+                IFNULL(apellido_paterno, '')                        AS apellido_paterno,
+                IFNULL(apellido_materno, '')                        AS apellido_materno,
+                IFNULL(cod_centro_costo, '')                        AS cod_centro_costo,
+                IFNULL(centro_costo, '')                            AS centro_costo,
+                IFNULL(departamento, '')                            AS departamento,
+                IFNULL(puesto, '')                                  AS puesto,
+                IFNULL(cargo, '')                                   AS cargo,
+                IFNULL(codigo_cargo, '')                            AS codigo_cargo,
+                IFNULL(localidad, '')                               AS localidad,
+                IFNULL(estado, '')                                  AS estado
             FROM Tmp_DATOS_EMPLEADOS
             WHERE LOWER(TRIM(web_user)) = LOWER(%s)
             LIMIT 1
@@ -50,25 +55,29 @@ def _get_empleado_data(conn: pymysql.connections.Connection, username: str) -> d
     if not row:
         return {}
     return {
-        "codigo_empleado": row.get("codigo"),
-        "centro_costo":    row.get("centro_costo"),
-        "departamento":    row.get("departamento"),
-        "cargo":           row.get("cargo"),
-        "localidad":       row.get("localidad"),
+        "codigo_empleado":  row.get("codigo"),
+        "centro_costo":     row.get("centro_costo"),
+        "cod_centro_costo": row.get("cod_centro_costo"),
+        "departamento":     row.get("departamento"),
+        "cargo":            row.get("cargo"),
+        "codigo_cargo":     row.get("codigo_cargo"),
+        "localidad":        row.get("localidad"),
+        "estado":           row.get("estado"),
     }
 
 
-def _check_is_oga(conn: pymysql.connections.Connection, email: str) -> bool:
+def _get_oga_rol(conn: pymysql.connections.Connection, email: str) -> str | None:
     with conn.cursor() as cursor:
         cursor.execute(
             """
-            SELECT COUNT(1) AS total FROM t_oga_usuarios
+            SELECT rol FROM t_oga_usuarios
             WHERE LOWER(TRIM(email)) = LOWER(%s) AND sn_activo = 1
+            LIMIT 1
             """,
             [email],
         )
         row = cursor.fetchone()
-    return bool(row and row.get("total", 0) > 0)
+    return row.get("rol") if row else None
 
 
 def enrich_user(conn: pymysql.connections.Connection, token_payload: dict) -> CurrentUser:
@@ -92,13 +101,15 @@ def enrich_user(conn: pymysql.connections.Connection, token_payload: dict) -> Cu
             return cached
 
     empleado    = _get_empleado_data(conn, username)
-    is_oga      = _check_is_oga(conn, email)
+    rol         = _get_oga_rol(conn, email)
+    is_oga      = rol == "OGA_ADMIN"
     permissions = _build_permissions(is_oga)
 
     user = CurrentUser(
         email=email,
         display_name=display_name,
         username=username,
+        rol=rol,
         is_oga=is_oga,
         permissions=permissions,
         **empleado,
@@ -118,9 +129,13 @@ def get_me_response(user: CurrentUser) -> MeResponse:
             username=user.username,
             codigo_empleado=user.codigo_empleado,
             centro_costo=user.centro_costo,
+            cod_centro_costo=user.cod_centro_costo,
             departamento=user.departamento,
             cargo=user.cargo,
+            codigo_cargo=user.codigo_cargo,
             localidad=user.localidad,
+            estado=user.estado,
+            rol=user.rol,
         ),
         is_oga=user.is_oga,
         permissions=user.permissions or _build_permissions(False),

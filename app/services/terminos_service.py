@@ -163,21 +163,23 @@ def crear_termino(conn, data: TerminoCreate, autor_codigo: int | None) -> Termin
         subcategoria = "EN REVISIÓN"
 
     with conn.cursor() as cursor:
+        cursor.execute("SELECT COALESCE(MAX(id), 0) + 1 AS next_id FROM T_terminos")
+        next_id = cursor.fetchone()["next_id"]
+
         cursor.execute(
             """
             INSERT INTO T_terminos
-                (nombre, tipo, descripcion, dominios, casos_uso, caracteristicas,
+                (id, nombre, tipo, descripcion, dominios, casos_uso, caracteristicas,
                  txt_desc_subcategoria, dato_personal, golden_record,
                  catalogos_asociados, etiqueta_tecnica, prioridad,
                  sn_activo, fecha_creacion, autor_creacion)
-            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,1,NOW(),%s)
+            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,1,NOW(),%s)
             """,
-            [data.nombre, data.tipo, data.descripcion, data.dominios, data.casos_uso,
+            [next_id, data.nombre, data.tipo, data.descripcion, data.dominios, data.casos_uso,
              data.caracteristicas, subcategoria, data.dato_personal, golden_val,
              data.catalogos_asociados, data.etiqueta_tecnica, data.prioridad, autor_codigo],
         )
-        new_id = cursor.lastrowid
-    return get_termino_by_id(conn, new_id)
+    return get_termino_by_id(conn, next_id)
 
 
 def actualizar_termino(conn, termino_id: int, data: TerminoUpdate,

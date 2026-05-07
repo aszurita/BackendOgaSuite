@@ -7,7 +7,10 @@ from app.models.metadatos import (
     Empleado, FiltrosMetadatos,
 )
 from app.models.common import PaginatedResponse
-from app.core.cache import get_arbol_cache, get_arbol_lock, invalidar_arbol_cache
+from app.core.cache import (
+    get_arbol_cache, get_arbol_lock, invalidar_arbol_cache,
+    get_tablas_all_cache, get_tablas_all_lock, invalidar_tablas_all_cache,
+)
 from app.core.exceptions import NotFoundException
 
 logger = logging.getLogger(__name__)
@@ -101,29 +104,19 @@ def _build_tablas_where(plataforma, servidor, base, esquema, clasificacion, tabl
     return " AND ".join(conditions), params
 
 
-def get_tablas(conn, page=1, page_size=20, plataforma=None, servidor=None,
-               base=None, esquema=None, clasificacion=None, tabla=None,
-               owner_q=None, owner_type=None) -> PaginatedResponse[TablaOficial]:
-    where, params = _build_tablas_where(plataforma, servidor, base, esquema, clasificacion, tabla, owner_q, owner_type)
-    offset = (page - 1) * page_size
+def _get_all_tablas_raw(conn) -> list[dict]:
+    """Carga todas las tablas sin paginación y las guarda en caché TTL."""
+    cache = get_tablas_all_cache()
+    lock  = get_tablas_all_lock()
+
+    with lock:
+        cached = cache.get("all")
+        if cached is not None:
+            return cached
 
     with conn.cursor() as cursor:
         cursor.execute(
-            f"""
-            SELECT COUNT(1) AS total
-            FROM t_tablas_oficiales t
-            JOIN t_fuente_aprovisionamiento f
-              ON f.id_fuente_aprovisionamiento = t.id_fuente_aprovisionamiento
-            LEFT JOIN t_clasificacion_tablas c
-              ON c.id_clasificacion = t.id_clasificacion
-            WHERE {where}
-            """,
-            params,
-        )
-        total = cursor.fetchone()["total"]
-
-        cursor.execute(
-            f"""
+            """
             SELECT
                    t.id_fuente_aprovisionamiento AS id,
                    t.id_fuente_aprovisionamiento,
@@ -137,13 +130,6 @@ def get_tablas(conn, page=1, page_size=20, plataforma=None, servidor=None,
                    t.descripcion_tabla, t.data_owner, t.nombre_data_owner,
                    t.data_steward, t.nombre_data_steward,
                    t.id_clasificacion, c.clasificacion, t.etiquetas,
-                   (
-                       SELECT GROUP_CONCAT(DISTINCT d.descripcion_dominio ORDER BY d.descripcion_dominio SEPARATOR '; ')
-                       FROM t_dominios_tablas_oficiales dto
-                       JOIN t_mapa_dominios d ON d.id_dominio = dto.id_dominio_asociado
-                       WHERE dto.id_fuente_aprovisionamiento = t.id_fuente_aprovisionamiento
-                         AND dto.txt_desc_tabla = t.txt_desc_tabla
-                   ) AS dominios,
                    t.avance, t.fecha_registro,
                    t.fecha_modificacion_do, t.fecha_modificacion_ds, f.sn_activo
             FROM t_tablas_oficiales t
@@ -151,16 +137,67 @@ def get_tablas(conn, page=1, page_size=20, plataforma=None, servidor=None,
               ON f.id_fuente_aprovisionamiento = t.id_fuente_aprovisionamiento
             LEFT JOIN t_clasificacion_tablas c
               ON c.id_clasificacion = t.id_clasificacion
-            WHERE {where}
+            WHERE f.sn_activo = 1
             ORDER BY f.txt_servidor, f.txt_host, f.txt_fuente_esquema, t.txt_desc_tabla
-            LIMIT %s OFFSET %s
-            """,
-            params + [page_size, offset],
+            """
         )
-        rows = cursor.fetchall()
+        rows = list(cursor.fetchall())
 
+    with lock:
+        cache["all"] = rows
+    return rows
+
+
+def _filter_tablas_raw(tablas, plataforma, servidor, base, esquema,
+                       clasificacion, tabla, owner_q, owner_type) -> list[dict]:
+    """Filtra la lista de tablas en memoria (equivalente a WHERE del SQL)."""
+    result = []
+    for t in tablas:
+        if plataforma and (t.get("plataforma") or "").upper() != plataforma.upper():
+            continue
+        if servidor and servidor.upper() not in (t.get("servidor") or "").upper():
+            continue
+        if base and base.upper() not in (t.get("base") or "").upper():
+            continue
+        if esquema and esquema.upper() not in (t.get("esquema") or "").upper():
+            continue
+        if tabla and tabla.upper() not in (t.get("tabla") or "").upper():
+            continue
+        if clasificacion:
+            rev = {"OFICIAL": 1, "TRABAJO": 2, "TEMPORAL": 3, "DESUSO": 4}
+            cid = rev.get(clasificacion.upper())
+            if cid:
+                if t.get("id_clasificacion") != cid:
+                    continue
+            else:
+                if (t.get("clasificacion") or "").upper() != clasificacion.upper():
+                    continue
+        if owner_q:
+            field = "nombre_data_steward" if owner_type == "steward" else "nombre_data_owner"
+            if owner_q.upper() not in (t.get(field) or "").upper():
+                continue
+        result.append(t)
+    return result
+
+
+def get_all_tablas(conn) -> list[TablaOficial]:
+    """Retorna todas las tablas sin paginación (desde caché)."""
+    return [_row_to_tabla(r) for r in _get_all_tablas_raw(conn)]
+
+
+def get_tablas(conn, page=1, page_size=20, plataforma=None, servidor=None,
+               base=None, esquema=None, clasificacion=None, tabla=None,
+               owner_q=None, owner_type=None) -> PaginatedResponse[TablaOficial]:
+    all_tablas = _get_all_tablas_raw(conn)
+    filtered   = _filter_tablas_raw(
+        all_tablas, plataforma, servidor, base, esquema,
+        clasificacion, tabla, owner_q, owner_type,
+    )
+    total     = len(filtered)
+    offset    = (page - 1) * page_size
+    page_data = filtered[offset:offset + page_size]
     return PaginatedResponse.build(
-        data=[_row_to_tabla(r) for r in rows], total=total, page=page, page_size=page_size
+        data=[_row_to_tabla(r) for r in page_data], total=total, page=page, page_size=page_size
     )
 
 
@@ -217,12 +254,13 @@ def get_campos(conn, page=1, page_size=20, tabla_id=None, buscar=None,
         conditions.append("v.id_fuente_aprovisionamiento = %s")
         params.append(tabla_id)
     if buscar:
-        t = f"%{buscar}%"
+        b = f"%{buscar}%"
         conditions.append(
             "(UPPER(v.desc_tecnica_atributo) LIKE UPPER(%s) "
-            "OR UPPER(IFNULL(v.detalle_campo,'')) LIKE UPPER(%s))"
+            "OR UPPER(IFNULL(v.detalle_campo,'')) LIKE UPPER(%s) "
+            "OR UPPER(IFNULL(v.txt_desc_atributo,'')) LIKE UPPER(%s))"
         )
-        params += [t, t]
+        params += [b, b, b]
     if plataforma:
         conditions.append("UPPER(IFNULL(f.txt_fuente_aprovisionamiento,'')) = UPPER(%s)")
         params.append(plataforma)
@@ -239,7 +277,7 @@ def get_campos(conn, page=1, page_size=20, tabla_id=None, buscar=None,
         conditions.append("UPPER(IFNULL(v.desc_tecnica_tabla,'')) LIKE UPPER(%s)")
         params.append(f"%{tabla}%")
 
-    where = " AND ".join(conditions)
+    where  = " AND ".join(conditions)
     offset = (page - 1) * page_size
 
     with conn.cursor() as cursor:
@@ -256,27 +294,45 @@ def get_campos(conn, page=1, page_size=20, tabla_id=None, buscar=None,
 
         cursor.execute(
             f"""
-            SELECT v.desc_tecnica_atributo AS campo,
-                   NULL                    AS descripcion,
-                   v.detalle_campo         AS detalle,
-                   CAST(v.id_tipo_dato_atributo AS CHAR) AS tipo_dato,
-                   CASE
-                       WHEN v.largo_atributo REGEXP '^[0-9]+$'
-                       THEN CAST(v.largo_atributo AS UNSIGNED)
-                       ELSE NULL
-                   END AS longitud,
-                   v.desc_tecnica_tabla    AS tabla,
-                   v.id_fuente_aprovisionamiento AS id_fuente,
-                   f.txt_fuente_aprovisionamiento AS plataforma,
-                   f.txt_servidor AS servidor,
-                   f.txt_host AS `base`,
-                   f.txt_fuente_esquema AS esquema,
-                   v.usuario_modificacion_detalle AS usuario_modificacion,
-                   v.fecha_modificacion_detalle   AS fecha_modificacion
+            SELECT
+                v.desc_tecnica_atributo                         AS campo,
+                CAST(IFNULL(v.id_atributos, '') AS CHAR)        AS codigo,
+                IFNULL(v.txt_desc_atributo, '')                 AS atributo,
+                IFNULL(v.detalle_campo, '')                     AS definicion,
+                CAST(v.id_tipo_dato_atributo AS CHAR)           AS tipo,
+                v.largo_atributo                                AS largo,
+                CASE
+                    WHEN v.largo_atributo REGEXP '^[0-9]+$'
+                    THEN CAST(v.largo_atributo AS UNSIGNED)
+                    ELSE NULL
+                END                                             AS longitud,
+                IFNULL(v.sn_nulo, '')                           AS permite_null,
+                IFNULL(v.ordinal_position, 0)                   AS ordinal_position,
+                CAST(IFNULL(v.golden_record_campo, 0) AS CHAR)  AS golden_record,
+                v.desc_tecnica_tabla                            AS tabla,
+                v.id_fuente_aprovisionamiento                   AS id_fuente,
+                v.id_fuente_aprovisionamiento                   AS id_fuente_aprovisionamiento,
+                f.txt_fuente_aprovisionamiento                  AS plataforma,
+                f.txt_servidor                                  AS servidor,
+                f.txt_host                                      AS `base`,
+                f.txt_fuente_esquema                            AS esquema,
+                IFNULL(t.descripcion_tabla, '')                 AS descripcion_tabla,
+                CAST(IFNULL(t.avance, 0) AS CHAR)              AS avance,
+                IFNULL(c.clasificacion, '')                     AS clasificacion,
+                IFNULL(t.nombre_data_owner, '')                 AS nombre_data_owner,
+                IFNULL(t.nombre_data_steward, '')               AS nombre_data_steward,
+                v.usuario_modificacion_detalle                  AS usuario_modificacion,
+                v.fecha_modificacion_detalle                    AS fecha_modificacion
             FROM t_atributos_inf_tecnica_larga v
-            LEFT JOIN t_fuente_aprovisionamiento f ON f.id_fuente_aprovisionamiento = v.id_fuente_aprovisionamiento
+            LEFT JOIN t_fuente_aprovisionamiento f
+                ON f.id_fuente_aprovisionamiento = v.id_fuente_aprovisionamiento
+            LEFT JOIN t_tablas_oficiales t
+                ON t.id_fuente_aprovisionamiento = v.id_fuente_aprovisionamiento
+                AND UPPER(TRIM(t.txt_desc_tabla)) = UPPER(TRIM(v.desc_tecnica_tabla))
+            LEFT JOIN t_clasificacion_tablas c
+                ON c.id_clasificacion = t.id_clasificacion
             WHERE {where}
-            ORDER BY v.desc_tecnica_tabla, v.desc_tecnica_atributo
+            ORDER BY v.desc_tecnica_tabla, v.ordinal_position, v.desc_tecnica_atributo
             LIMIT %s OFFSET %s
             """,
             params + [page_size, offset],
@@ -285,20 +341,37 @@ def get_campos(conn, page=1, page_size=20, tabla_id=None, buscar=None,
 
     data = []
     for r in rows:
-        llave = f"{r.get('servidor') or ''}_{r.get('esquema') or ''}_{r.get('base') or ''}_{r.get('tabla') or ''}"
+        sv  = (r.get("servidor") or "").upper().strip()
+        es  = (r.get("esquema")  or "").upper().strip()
+        ba  = (r.get("base")     or "").upper().strip()
+        tb  = (r.get("tabla")    or "").upper().strip()
+        ca  = (r.get("campo")    or "").upper().strip()
+        lt  = f"{sv}_{es}_{ba}_{tb}"
         data.append(Campo(
-            llave_tabla=llave,
+            llave_tabla=lt,
+            llave_unica=f"{lt}_{ca}",
             campo=r.get("campo"),
-            tipo_dato=r.get("tipo_dato"),
+            codigo=str(r.get("codigo") or ""),
+            atributo=r.get("atributo") or "",
+            definicion=r.get("definicion") or "",
+            tipo=r.get("tipo") or "",
+            largo=str(r.get("largo") or "-"),
             longitud=r.get("longitud"),
-            descripcion=r.get("descripcion"),
-            detalle=r.get("detalle"),
+            permite_null=str(r.get("permite_null") or "-"),
+            ordinal_position=r.get("ordinal_position"),
+            golden_record=str(r.get("golden_record") or "0"),
+            descripcion_tabla=r.get("descripcion_tabla") or "",
+            avance=str(r.get("avance") or "0"),
+            clasificacion=r.get("clasificacion") or "",
+            nombre_data_owner=r.get("nombre_data_owner") or "",
+            nombre_data_steward=r.get("nombre_data_steward") or "",
             plataforma=r.get("plataforma"),
             servidor=r.get("servidor"),
             base=r.get("base"),
             esquema=r.get("esquema"),
             tabla=r.get("tabla"),
             id_fuente=r.get("id_fuente"),
+            id_fuente_aprovisionamiento=r.get("id_fuente_aprovisionamiento"),
             usuario_modificacion=r.get("usuario_modificacion"),
             fecha_modificacion=r.get("fecha_modificacion"),
         ))
@@ -429,6 +502,7 @@ def update_tabla(conn, tabla_id: int, data: TablaUpdate,
             f"UPDATE t_tablas_oficiales SET {', '.join(updates)} WHERE id_fuente_aprovisionamiento = %s", params
         )
     invalidar_arbol_cache()
+    invalidar_tablas_all_cache()
     return get_tabla_by_id(conn, tabla_id)
 
 
@@ -439,6 +513,10 @@ def update_campo(conn, tabla_id: int, campo_nombre: str,
     if detalle is not None:
         updates += ["detalle_campo = %s", "usuario_modificacion_detalle = %s", "fecha_modificacion_detalle = NOW()"]
         params += [detalle, usuario]
+
+    if "id_atributos" in data.model_fields_set:
+        updates.append("id_atributos = %s")
+        params.append(data.id_atributos)  # None → NULL en MySQL (limpia el atributo)
 
     if not updates:
         return {"ok": True}
@@ -468,38 +546,14 @@ def get_empleados(conn) -> list[Empleado]:
 
 
 def get_filtros(conn) -> FiltrosMetadatos:
-    with conn.cursor() as cursor:
-        cursor.execute(
-            """
-            SELECT DISTINCT txt_fuente_aprovisionamiento AS plataforma
-            FROM t_fuente_aprovisionamiento
-            WHERE txt_fuente_aprovisionamiento IS NOT NULL
-              AND sn_activo = 1
-            ORDER BY plataforma
-            """
-        )
-        plataformas = [r["plataforma"] for r in cursor.fetchall()]
-
-        cursor.execute(
-            """
-            SELECT DISTINCT txt_servidor AS servidor
-            FROM t_fuente_aprovisionamiento
-            WHERE txt_servidor IS NOT NULL
-              AND sn_activo = 1
-            ORDER BY servidor
-            """
-        )
-        servidores = [r["servidor"] for r in cursor.fetchall()]
-
-        cursor.execute(
-            """
-            SELECT id_clasificacion, clasificacion
-            FROM t_clasificacion_tablas
-            WHERE sn_activo = 1
-            ORDER BY id_clasificacion
-            """
-        )
-        clasificaciones = [{"id": r["id_clasificacion"], "descripcion": r["clasificacion"]}
-                           for r in cursor.fetchall()]
-
+    all_tablas  = _get_all_tablas_raw(conn)
+    servidores  = sorted({t.get("servidor") for t in all_tablas if t.get("servidor")})
+    plataformas = sorted({t.get("plataforma") for t in all_tablas if t.get("plataforma")})
+    clases_map  = {}
+    for t in all_tablas:
+        cid  = t.get("id_clasificacion")
+        clas = t.get("clasificacion")
+        if cid and clas:
+            clases_map[cid] = clas
+    clasificaciones = [{"id": k, "descripcion": v} for k, v in sorted(clases_map.items())]
     return FiltrosMetadatos(servidores=servidores, plataformas=plataformas, clasificaciones=clasificaciones)

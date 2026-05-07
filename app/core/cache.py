@@ -6,6 +6,10 @@ from app.core.config import settings
 _arbol_cache: TTLCache = TTLCache(maxsize=1, ttl=settings.CACHE_TTL_ARBOL_SEGUNDOS)
 _arbol_lock = Lock()
 
+# Cache de todas las tablas (sin paginación, para filtrado en memoria)
+_tablas_all_cache: TTLCache = TTLCache(maxsize=1, ttl=settings.CACHE_TTL_ARBOL_SEGUNDOS)
+_tablas_all_lock = Lock()
+
 # Cache de permisos por usuario (email -> permisos)
 _permisos_cache: TTLCache = TTLCache(maxsize=500, ttl=settings.CACHE_TTL_PERMISOS_SEGUNDOS)
 _permisos_lock = Lock()
@@ -24,6 +28,12 @@ def get_arbol_cache() -> TTLCache:
 
 def get_arbol_lock() -> Lock:
     return _arbol_lock
+
+def get_tablas_all_cache() -> TTLCache:
+    return _tablas_all_cache
+
+def get_tablas_all_lock() -> Lock:
+    return _tablas_all_lock
 
 def get_permisos_cache() -> TTLCache:
     return _permisos_cache
@@ -47,6 +57,10 @@ def get_jwks_lock() -> Lock:
 def invalidar_arbol_cache() -> None:
     with _arbol_lock:
         _arbol_cache.clear()
+
+def invalidar_tablas_all_cache() -> None:
+    with _tablas_all_lock:
+        _tablas_all_cache.clear()
 
 def invalidar_terminos_cache() -> None:
     with _terminos_lock:

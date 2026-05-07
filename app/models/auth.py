@@ -7,9 +7,13 @@ class UserInfo(BaseModel):
     username: str
     codigo_empleado: str | None = None
     centro_costo: str | None = None
+    cod_centro_costo: str | None = None
     departamento: str | None = None
     cargo: str | None = None
+    codigo_cargo: str | None = None
     localidad: str | None = None
+    estado: str | None = None
+    rol: str | None = None
 
 
 class GlosarioPermisos(BaseModel):
@@ -58,9 +62,13 @@ class CurrentUser(BaseModel):
     username: str
     codigo_empleado: str | None = None
     centro_costo: str | None = None
+    cod_centro_costo: str | None = None
     departamento: str | None = None
     cargo: str | None = None
+    codigo_cargo: str | None = None
     localidad: str | None = None
+    estado: str | None = None
+    rol: str | None = None
     is_oga: bool = False
     permissions: PermissionsMap | None = None
 
