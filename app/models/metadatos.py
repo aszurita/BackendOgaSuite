@@ -46,6 +46,7 @@ class TablaUpdate(BaseModel):
     id_clasificacion: int | None = None
     etiquetas: str | None = None
     dominios: str | None = None
+    dominios_ids: list[int] | None = None   # IDs para INSERT en t_dominios_tablas_oficiales
 
 
 class Campo(BaseModel):

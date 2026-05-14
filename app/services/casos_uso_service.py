@@ -313,3 +313,73 @@ def get_contadores_estado(conn, id_dominio: int | None = None) -> ContadoresEsta
         terminados=row["terminados"] or 0,
         total=row["total"] or 0,
     )
+
+
+def get_clasificaciones_tablas(conn) -> list[dict]:
+    with conn.cursor() as cursor:
+        cursor.execute(
+            "SELECT id_clasificacion AS value, clasificacion AS rawLabel FROM t_clasificacion_tablas WHERE sn_activo = 1 ORDER BY id_clasificacion"
+        )
+        rows = cursor.fetchall()
+    LABELS = {"OFICIAL": "Tabla Oficial", "TEMPORAL": "Tabla Temporal", "TRABAJO": "Tabla de Trabajo", "DESUSO": "Tabla en Desuso"}
+    return [
+        {
+            "value": str(r.get("value") or ""),
+            "rawLabel": str(r.get("rawLabel") or ""),
+            "label": LABELS.get(str(r.get("rawLabel") or "").strip().upper(), str(r.get("rawLabel") or "").strip()),
+        }
+        for r in rows if r.get("value")
+    ]
+
+
+def get_medallones_tablas(conn) -> list[dict]:
+    with conn.cursor() as cursor:
+        cursor.execute(
+            "SELECT valor1 AS value, valor2 AS label FROM t_catalogo_ogasuite WHERE txt_etiqueta = 'Etiqueta' AND valor3 = 'medallon' ORDER BY CAST(valor1 AS UNSIGNED)"
+        )
+        rows = cursor.fetchall()
+    return [
+        {"value": str(r.get("value") or ""), "label": str(r.get("label") or "")}
+        for r in rows if r.get("value")
+    ]
+
+
+def get_fuente_meta_by_clave(conn, clave: str) -> dict | None:
+    parts = [p.strip().upper() for p in clave.split(".")]
+    if len(parts) < 4:
+        return None
+    servidor, base, esquema, tabla = parts[0], parts[1], parts[2], parts[3]
+    with conn.cursor() as cursor:
+        cursor.execute(
+            """
+            SELECT t.id_fuente_aprovisionamiento, t.txt_desc_tabla, t.etiquetas,
+                   t.id_clasificacion, c.clasificacion, f.txt_servidor, f.txt_host,
+                   IFNULL(f.txt_fuente_esquema, 'DBO') AS txt_fuente_esquema,
+                   f.txt_fuente_aprovisionamiento, IFNULL(CAST(t.avance AS CHAR), '0') AS avance
+            FROM t_tablas_oficiales t
+            JOIN t_fuente_aprovisionamiento f ON t.id_fuente_aprovisionamiento = f.id_fuente_aprovisionamiento AND f.sn_activo = 1
+            LEFT JOIN t_clasificacion_tablas c ON t.id_clasificacion = c.id_clasificacion
+            WHERE UPPER(TRIM(f.txt_servidor)) = %s
+              AND UPPER(TRIM(f.txt_host)) = %s
+              AND UPPER(TRIM(IFNULL(f.txt_fuente_esquema, 'DBO'))) = %s
+              AND UPPER(TRIM(t.txt_desc_tabla)) = %s
+            ORDER BY t.fecha_registro DESC
+            LIMIT 1
+            """,
+            (servidor, base, esquema, tabla),
+        )
+        row = cursor.fetchone()
+    if not row:
+        return {"medallonKey": "sin clasificacion", "isOfficial": False, "etiquetaId": None, "etiqueta": "", "avance": "0", "row": None}
+    raw_etiquetas = str(row.get("etiquetas") or "").strip()
+    raw_clasificacion = str(row.get("clasificacion") or "").strip().upper()
+    MEDALLON_MAP = {"5": "oro", "4": "plata", "3": "bronce", "11": "sin clasificacion"}
+    medallon_key = MEDALLON_MAP.get(raw_etiquetas, "sin clasificacion")
+    return {
+        "medallonKey": medallon_key,
+        "isOfficial": raw_clasificacion == "OFICIAL",
+        "etiquetaId": row.get("id_clasificacion"),
+        "etiqueta": raw_clasificacion,
+        "avance": str(row.get("avance") or "0"),
+        "row": row,
+    }

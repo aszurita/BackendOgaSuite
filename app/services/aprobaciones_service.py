@@ -152,7 +152,9 @@ def _aplicar_cambio(conn, aprobacion: Aprobacion, autor_codigo: str) -> None:
                     continue
                 # INSERT IGNORE previene duplicados via UNIQUE KEY
                 cursor.execute(
-                    "INSERT IGNORE INTO t_dominios_tablas_oficiales (id_fuente, txt_tabla, id_dominio) VALUES (%s,%s,%s)",
+                    "INSERT IGNORE INTO t_dominios_tablas_oficiales"
+                    " (id_fuente_aprovisionamiento, txt_desc_tabla, id_dominio_asociado)"
+                    " VALUES (%s, %s, %s)",
                     [aprobacion.dato1, aprobacion.dato2, id_dominio],
                 )
         elif tc == 5:
@@ -251,6 +253,22 @@ def crear_desde_tabla_update(conn, tabla_id: int, data: TablaUpdate,
         creadas.append(crear_aprobacion(conn, AprobacionCreate(
             tipo_cambio=9, solicitado=data.etiquetas,
             dato1=str(tabla_id), descripcion_cambio="Solicitud de cambio de Medallon",
+        ), autor_email, autor_codigo))
+
+    if data.dominios_ids:
+        with conn.cursor() as cursor:
+            cursor.execute(
+                "SELECT txt_desc_tabla FROM t_tablas_oficiales WHERE id_fuente_aprovisionamiento=%s LIMIT 1",
+                [tabla_id],
+            )
+            row = cursor.fetchone()
+        txt_tabla = row["txt_desc_tabla"] if row else ""
+        creadas.append(crear_aprobacion(conn, AprobacionCreate(
+            tipo_cambio=4,
+            solicitado=";".join(str(d) for d in data.dominios_ids),
+            dato1=str(tabla_id),
+            dato2=txt_tabla,
+            descripcion_cambio="Solicitud de asociacion de dominios",
         ), autor_email, autor_codigo))
 
     return creadas

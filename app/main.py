@@ -6,7 +6,10 @@ from app.core.config import settings
 from app.core.database import init_pool, close_pool
 from app.core.exceptions import register_exception_handlers
 from app.core.logging_config import setup_logging
-from app.routers import auth, terminos, dominios, metadatos, aprobaciones, casos_uso, campanias, analytics
+from app.routers import (
+    auth, terminos, dominios, metadatos, aprobaciones, casos_uso, campanias, analytics,
+    catalogo_referencia, origenes_datos, formulario_registro, calidad,
+)
 
 
 @asynccontextmanager
@@ -49,3 +52,7 @@ app.include_router(aprobaciones.router, prefix="/aprobaciones", tags=["Aprobacio
 app.include_router(casos_uso.router,    prefix="/casos-uso",    tags=["Casos de Uso"])
 app.include_router(campanias.router,    prefix="/campanias",    tags=["Campanas"])
 app.include_router(analytics.router,    prefix="/analytics",    tags=["Analytics"])
+app.include_router(catalogo_referencia.router, prefix="/catalogo-referencia", tags=["Catálogo de Referencia"])
+app.include_router(origenes_datos.router,      prefix="/origenes-datos",      tags=["Orígenes de Datos"])
+app.include_router(formulario_registro.router, prefix="/formulario-registro", tags=["Formulario de Registro"])
+app.include_router(calidad.router,             prefix="",                     tags=["Calidad"])

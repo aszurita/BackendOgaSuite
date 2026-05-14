@@ -116,3 +116,21 @@ async def eliminar_fuente(
 async def terminos_caso_uso(caso_id: int, db=Depends(get_db)):
     """Retorna los terminos del glosario vinculados al caso de uso."""
     return casos_uso_service.get_terminos_caso_uso(db, caso_id)
+
+
+@router.get("/clasificaciones", response_model=list[dict])
+async def listar_clasificaciones(db=Depends(get_db)):
+    """Lista las clasificaciones de tablas disponibles."""
+    return casos_uso_service.get_clasificaciones_tablas(db)
+
+
+@router.get("/medallones", response_model=list[dict])
+async def listar_medallones(db=Depends(get_db)):
+    """Lista las opciones de medallón disponibles."""
+    return casos_uso_service.get_medallones_tablas(db)
+
+
+@router.get("/fuente-meta")
+async def fuente_meta(clave: str = Query(...), db=Depends(get_db)):
+    """Retorna la metadata de clasificación de una tabla por su clave servidor.base.esquema.tabla."""
+    return casos_uso_service.get_fuente_meta_by_clave(db, clave)

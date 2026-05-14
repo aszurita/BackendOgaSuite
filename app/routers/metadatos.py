@@ -78,6 +78,12 @@ async def update_tabla(
         return metadatos_service.get_tabla_by_id(db, tabla_id)
 
 
+@router.get("/tablas/{tabla_id}/dominios")
+async def get_dominios_tabla(tabla_id: int, db=Depends(get_db)):
+    """Retorna los dominios asociados a una tabla: [{id_dominio, descripcion_dominio}]."""
+    return metadatos_service.get_dominios_tabla(db, tabla_id)
+
+
 @router.get("/tablas/{tabla_id}/recomendaciones", response_model=list[RecomendacionDoc])
 async def recomendaciones(tabla_id: int, db=Depends(get_db)):
     """Retorna sugerencias de documentacion para campos sin descripcion."""

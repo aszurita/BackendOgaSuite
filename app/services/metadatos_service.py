@@ -468,7 +468,7 @@ def get_recomendaciones(conn, tabla_id: int) -> list[RecomendacionDoc]:
 
 def update_tabla(conn, tabla_id: int, data: TablaUpdate,
                  usuario_email: str, usuario_codigo: str | None) -> TablaOficial:
-    get_tabla_by_id(conn, tabla_id)
+    tabla_actual = get_tabla_by_id(conn, tabla_id)
     updates, params = [], []
     usuario = usuario_codigo or usuario_email
 
@@ -493,17 +493,48 @@ def update_tabla(conn, tabla_id: int, data: TablaUpdate,
     if data.etiquetas is not None:
         updates += ["etiquetas = %s", "usuario_modificacion_etiqueta = %s"]
         params += [data.etiquetas, usuario]
-    if not updates:
-        return get_tabla_by_id(conn, tabla_id)
 
-    params.append(tabla_id)
+    if updates:
+        params.append(tabla_id)
+        with conn.cursor() as cursor:
+            cursor.execute(
+                f"UPDATE t_tablas_oficiales SET {', '.join(updates)} WHERE id_fuente_aprovisionamiento = %s", params
+            )
+        invalidar_arbol_cache()
+        invalidar_tablas_all_cache()
+
+    if data.dominios_ids is not None:
+        txt_tabla = tabla_actual.txt_desc_tabla or ""
+        with conn.cursor() as cursor:
+            for id_dominio in data.dominios_ids:
+                cursor.execute(
+                    "INSERT IGNORE INTO t_dominios_tablas_oficiales"
+                    " (id_fuente_aprovisionamiento, txt_desc_tabla, id_dominio_asociado)"
+                    " VALUES (%s, %s, %s)",
+                    [tabla_id, txt_tabla, id_dominio],
+                )
+
+    return get_tabla_by_id(conn, tabla_id)
+
+
+def get_dominios_tabla(conn, tabla_id: int) -> list[dict]:
+    """Retorna los dominios asociados a una tabla como [{id_dominio, descripcion_dominio}]."""
+    tabla = get_tabla_by_id(conn, tabla_id)
+    txt_tabla = tabla.txt_desc_tabla or ""
     with conn.cursor() as cursor:
         cursor.execute(
-            f"UPDATE t_tablas_oficiales SET {', '.join(updates)} WHERE id_fuente_aprovisionamiento = %s", params
+            """
+            SELECT d.id_dominio, d.descripcion_dominio
+            FROM t_dominios_tablas_oficiales dto
+            JOIN t_mapa_dominios d ON d.id_dominio = dto.id_dominio_asociado
+            WHERE dto.id_fuente_aprovisionamiento = %s
+              AND dto.txt_desc_tabla = %s
+            ORDER BY d.descripcion_dominio
+            """,
+            [tabla_id, txt_tabla],
         )
-    invalidar_arbol_cache()
-    invalidar_tablas_all_cache()
-    return get_tabla_by_id(conn, tabla_id)
+        return [{"id_dominio": r["id_dominio"], "descripcion_dominio": r["descripcion_dominio"]}
+                for r in cursor.fetchall()]
 
 
 def update_campo(conn, tabla_id: int, campo_nombre: str,
